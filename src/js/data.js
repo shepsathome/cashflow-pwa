@@ -19,10 +19,30 @@ function buildMonths(startYYYYMM, years) {
 function mLabel(m) { const [y, mo] = m.split('-'); return MN[+mo - 1] + ' ' + y; }
 function mLblShort(m) { const [y, mo] = m.split('-'); return MN[+mo - 1] + ' ' + y.slice(2); }
 
+// Supported currencies — symbol, locale, and position
+const CURRENCIES = {
+  GBP: { symbol: '£', locale: 'en-GB', name: 'British Pound (£)' },
+  USD: { symbol: '$', locale: 'en-US', name: 'US Dollar ($)' },
+  EUR: { symbol: '€', locale: 'de-DE', name: 'Euro (€)' },
+  JPY: { symbol: '¥', locale: 'ja-JP', name: 'Japanese Yen (¥)' },
+  AUD: { symbol: 'A$', locale: 'en-AU', name: 'Australian Dollar (A$)' },
+  CAD: { symbol: 'C$', locale: 'en-CA', name: 'Canadian Dollar (C$)' },
+  CHF: { symbol: 'CHF', locale: 'de-CH', name: 'Swiss Franc (CHF)' },
+  INR: { symbol: '₹', locale: 'en-IN', name: 'Indian Rupee (₹)' },
+  SEK: { symbol: 'kr', locale: 'sv-SE', name: 'Swedish Krona (kr)' },
+  NOK: { symbol: 'kr', locale: 'nb-NO', name: 'Norwegian Krone (kr)' },
+  DKK: { symbol: 'kr', locale: 'da-DK', name: 'Danish Krone (kr)' },
+  NZD: { symbol: 'NZ$', locale: 'en-NZ', name: 'New Zealand Dollar (NZ$)' },
+  ZAR: { symbol: 'R', locale: 'en-ZA', name: 'South African Rand (R)' },
+  BRL: { symbol: 'R$', locale: 'pt-BR', name: 'Brazilian Real (R$)' },
+  SGD: { symbol: 'S$', locale: 'en-SG', name: 'Singapore Dollar (S$)' },
+};
+
 const DEFAULTS = {
   startingBalance: 12500,
   startMonth: '2026-01',
   forecastYears: 5,
+  settings: { currency: 'GBP' },
   savings: { startValue: 8000, growthPct: 4.5 },
   income: [
     { id: 'salary_1', name: 'Salary — Partner 1', category: 'Salaries', base: 3500, overrides: {} },

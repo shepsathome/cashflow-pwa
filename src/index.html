@@ -31,6 +31,7 @@
   <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
   <div class="ntab" onclick="showTab('savings',this)">Savings</div>
   <div class="ntab" onclick="showTab('items',this)">Items</div>
+  <div class="ntab" onclick="showTab('settings',this)">Settings</div>
 </nav>
 
 <div class="content">
@@ -41,7 +42,7 @@
     <!-- Settings Bar -->
     <div class="settings-bar">
       <div class="sf">
-        <label>Starting Balance (£)</label>
+        <label>Starting Balance (<span class="cur-sym">£</span>)</label>
         <div class="sf-row">
           <input type="number" class="si si-num" id="cfg-bal" step="0.01" onchange="applyCfg()" placeholder="0.00">
         </div>
@@ -129,7 +130,7 @@
 
     <div class="sav-settings">
       <div class="sf">
-        <label>Starting Savings Value (£)</label>
+        <label>Starting Savings Value (<span class="cur-sym">£</span>)</label>
         <div class="sf-row">
           <input type="number" class="si si-num" id="sav-start" step="0.01" placeholder="0.00" onchange="applySavingsCfg()">
         </div>
@@ -172,6 +173,58 @@
 
   </div>
 
+  <!-- SETTINGS -->
+  <div class="panel" id="tab-settings">
+    <div class="settings-page">
+      <div class="settings-section">
+        <div class="settings-section-title">Currency</div>
+        <div class="settings-section-desc">Choose the currency used for all amounts, charts and tables.</div>
+        <div class="sf">
+          <label>Display Currency</label>
+          <select class="si" id="set-currency" style="width:260px" onchange="applySettings()"></select>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Forecast Defaults</div>
+        <div class="settings-section-desc">These are also available on the Dashboard tab.</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div class="sf">
+            <label>Starting Balance (<span id="set-cur-label">£</span>)</label>
+            <input type="number" class="si si-num" id="set-bal" step="0.01" onchange="applySettingsForecast()" placeholder="0.00">
+          </div>
+          <div class="sf">
+            <label>Starting Month</label>
+            <div class="sf-row">
+              <select class="si si-mon" id="set-mon" onchange="applySettingsForecast()"></select>
+              <select class="si si-yr" id="set-yr" onchange="applySettingsForecast()"></select>
+            </div>
+          </div>
+          <div class="sf">
+            <label>Forecast Period</label>
+            <select class="si si-fy" id="set-fy" onchange="applySettingsForecast()">
+              <option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option>
+              <option value="4">4 Years</option><option value="5" selected>5 Years</option><option value="6">6 Years</option>
+              <option value="7">7 Years</option><option value="8">8 Years</option><option value="9">9 Years</option>
+              <option value="10">10 Years</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Data</div>
+        <div class="settings-section-desc">Export your data as JSON backup, or import a previous backup.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" onclick="exportData()">⬇ Export JSON</button>
+          <button class="btn" onclick="document.getElementById('import-file').click()">⬆ Import JSON</button>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+          <button class="btn btn-del" onclick="doReset()">Reset to Defaults</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Item modal -->
@@ -181,7 +234,7 @@
     <input type="hidden" id="mod-type"><input type="hidden" id="mod-id">
     <div class="fg"><label class="fl">Name</label><input type="text" class="fi" id="mod-name"></div>
     <div class="fg"><label class="fl">Category</label><input type="text" class="fi" id="mod-cat" list="cat-list"><datalist id="cat-list"></datalist></div>
-    <div class="fg"><label class="fl">Base Monthly Amount (£)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
+    <div class="fg"><label class="fl">Base Monthly Amount (<span class="cur-sym">£</span>)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
     <div class="fg">
       <label class="fl">Monthly Overrides <span style="font-weight:400;text-transform:none;letter-spacing:0;font-style:italic">(values that differ from the base)</span></label>
       <div class="ovr-list" id="ovr-list"></div>

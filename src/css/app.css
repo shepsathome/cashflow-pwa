@@ -161,6 +161,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .smt tr:last-child td{background:var(--gold-bg);font-weight:700;border-top:2px solid #c8a84b}
 .smt tr:last-child td:first-child{color:var(--gold);background:var(--gold-bg)}
 
+/* SETTINGS PAGE */
+.settings-page{max-width:680px}
+.settings-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:22px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.settings-section-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--gold);margin-bottom:4px}
+.settings-section-desc{font-size:12px;color:var(--dim);margin-bottom:16px;line-height:1.5}
+
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}

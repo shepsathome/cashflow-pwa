@@ -15,6 +15,7 @@ function populateCfg() {
   document.getElementById('cfg-fy').value = S.forecastYears;
   document.getElementById('sav-start').value = S.savings.startValue;
   document.getElementById('sav-growth').value = S.savings.growthPct;
+  updateCurrencyLabels();
 }
 
 function applyCfg() {
@@ -44,6 +45,7 @@ function showTab(name, el) {
   if (name === 'forecast') renderForecast();
   if (name === 'savings') renderSavings();
   if (name === 'items') renderItems();
+  if (name === 'settings') renderSettings();
 }
 
 // DASHBOARD
@@ -354,4 +356,95 @@ function renderAll() {
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
   if (document.getElementById('tab-items').classList.contains('on')) renderItems();
+  if (document.getElementById('tab-settings').classList.contains('on')) renderSettings();
+}
+
+// ─────────────────────────────────────────────
+// SETTINGS PAGE
+// ─────────────────────────────────────────────
+function updateCurrencyLabels() {
+  const sym = currencySymbol();
+  document.querySelectorAll('.cur-sym').forEach(el => el.textContent = sym);
+  const setLabel = document.getElementById('set-cur-label');
+  if (setLabel) setLabel.textContent = sym;
+}
+
+function renderSettings() {
+  // Currency dropdown
+  const sel = document.getElementById('set-currency');
+  const curCode = (S.settings && S.settings.currency) || 'GBP';
+  sel.innerHTML = Object.entries(CURRENCIES)
+    .map(([code, c]) => `<option value="${code}" ${code === curCode ? 'selected' : ''}>${c.name}</option>`)
+    .join('');
+
+  // Forecast settings mirror
+  const [sy, sm] = S.startMonth.split('-').map(Number);
+  const setMon = document.getElementById('set-mon');
+  setMon.innerHTML = MN.map((n, i) => `<option value="${i + 1}">${n}</option>`).join('');
+  setMon.value = sm;
+  const setYr = document.getElementById('set-yr');
+  setYr.innerHTML = '';
+  for (let y = 2020; y <= 2035; y++) setYr.innerHTML += `<option value="${y}">${y}</option>`;
+  setYr.value = sy;
+  document.getElementById('set-bal').value = S.startingBalance;
+  document.getElementById('set-fy').value = S.forecastYears;
+
+  updateCurrencyLabels();
+}
+
+function applySettings() {
+  const newCur = document.getElementById('set-currency').value;
+  if (!S.settings) S.settings = {};
+  S.settings.currency = newCur;
+  markDirty();
+  updateCurrencyLabels();
+  renderSettings();
+}
+
+function applySettingsForecast() {
+  const mon = +document.getElementById('set-mon').value;
+  const yr = +document.getElementById('set-yr').value;
+  const bal = parseFloat(document.getElementById('set-bal').value) || 0;
+  const fy = +document.getElementById('set-fy').value;
+  S.startMonth = `${yr}-${String(mon).padStart(2, '0')}`;
+  S.startingBalance = bal;
+  S.forecastYears = fy;
+  markDirty();
+  rebuildMonths();
+  // Sync dashboard settings bar
+  populateCfg();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cashflow-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.income || !data.outgoings) throw new Error('Invalid format');
+      S = data;
+      if (!S.savings) S.savings = deep(DEFAULTS.savings);
+      if (!S.settings) S.settings = deep(DEFAULTS.settings);
+      save();
+      populateCfg();
+      rebuildMonths();
+      renderAll();
+      alert('Data imported successfully.');
+    } catch (err) {
+      alert('Import failed: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
 }

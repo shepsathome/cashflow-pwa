@@ -11,6 +11,7 @@ function load() {
     if (r) {
       S = JSON.parse(r);
       if (!S.savings) S.savings = deep(DEFAULTS.savings);
+      if (!S.settings) S.settings = deep(DEFAULTS.settings);
       return;
     }
   } catch (e) {}

@@ -28,8 +28,18 @@ function computeSavings() {
   return { contribs, growth, bals, items: savItems };
 }
 
+function getCurrency() {
+  const code = (S && S.settings && S.settings.currency) || 'GBP';
+  return CURRENCIES[code] || CURRENCIES.GBP;
+}
+
 function fmt(v, z = true) {
   if (!z && v === 0) return '—';
-  const s = Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-  return (v < 0 ? '-£' : '£') + s;
+  const cur = getCurrency();
+  const s = Math.abs(v).toLocaleString(cur.locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return (v < 0 ? '-' + cur.symbol : cur.symbol) + s;
+}
+
+function currencySymbol() {
+  return getCurrency().symbol;
 }
