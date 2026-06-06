@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashflow</title>
+<meta name="description" content="Personal finance forecast — track income, outgoings, savings and running balance over time.">
+<meta name="theme-color" content="#9a7520">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cashflow">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand">Cashflow<span class="brand-sub">Personal Finance Forecast</span></div>
+  <div class="hdr-right">
+    <div class="save-badge"><div class="dot" id="sdot"></div><span id="stxt">Saved</span></div>
+    <button class="btn" onclick="doReset()">Reset to Defaults</button>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="ntab on" onclick="showTab('dashboard',this)">Dashboard</div>
+  <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
+  <div class="ntab" onclick="showTab('savings',this)">Savings</div>
+  <div class="ntab" onclick="showTab('items',this)">Items</div>
+</nav>
+
+<div class="content">
+
+  <!-- DASHBOARD -->
+  <div class="panel on" id="tab-dashboard">
+
+    <!-- Settings Bar -->
+    <div class="settings-bar">
+      <div class="sf">
+        <label>Starting Balance (£)</label>
+        <div class="sf-row">
+          <input type="number" class="si si-num" id="cfg-bal" step="0.01" onchange="applyCfg()" placeholder="0.00">
+        </div>
+      </div>
+      <div class="sf">
+        <label>Starting Month</label>
+        <div class="sf-row">
+          <select class="si si-mon" id="cfg-mon" onchange="applyCfg()"></select>
+          <select class="si si-yr" id="cfg-yr" onchange="applyCfg()"></select>
+        </div>
+      </div>
+      <div class="sf">
+        <label>Forecast Period</label>
+        <select class="si si-fy" id="cfg-fy" onchange="applyCfg()">
+          <option value="1">1 Year</option>
+          <option value="2">2 Years</option>
+          <option value="3">3 Years</option>
+          <option value="4">4 Years</option>
+          <option value="5" selected>5 Years</option>
+          <option value="6">6 Years</option>
+          <option value="7">7 Years</option>
+          <option value="8">8 Years</option>
+          <option value="9">9 Years</option>
+          <option value="10">10 Years</option>
+        </select>
+      </div>
+      <div class="settings-note">Changes are saved automatically</div>
+    </div>
+
+    <div class="stats">
+      <div class="sc">
+        <div class="sl">Starting Balance</div>
+        <div class="sv gld" id="sv-start">£0</div>
+        <div class="ss" id="ss-start">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Minimum Balance</div>
+        <div class="sv" id="sv-min">£0</div>
+        <div class="ss" id="ss-min">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">End Balance</div>
+        <div class="sv" id="sv-end">£0</div>
+        <div class="ss" id="ss-end">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Avg Monthly Net</div>
+        <div class="sv" id="sv-avg">£0</div>
+        <div class="ss">Income minus outgoings</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="chart-title">Running Balance</div>
+      <canvas id="bal-chart"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Annual Summary</div>
+      <table class="at" id="at"></table>
+    </div>
+  </div>
+
+  <!-- FORECAST -->
+  <div class="panel" id="tab-forecast">
+    <div class="fw"><table class="ft" id="ft"></table></div>
+  </div>
+
+  <!-- ITEMS -->
+  <div class="panel" id="tab-items">
+    <div class="il">
+      <div class="ip">
+        <div class="iph"><div class="ipt">Income Items</div><button class="btn btn-sm btn-g" onclick="openAdd('income')">+ Add Item</button></div>
+        <div id="inc-list"></div>
+      </div>
+      <div class="ip">
+        <div class="iph"><div class="ipt">Outgoing Items</div><button class="btn btn-sm btn-g" onclick="openAdd('outgoings')">+ Add Item</button></div>
+        <div id="out-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVINGS -->
+  <div class="panel" id="tab-savings">
+
+    <div class="sav-settings">
+      <div class="sf">
+        <label>Starting Savings Value (£)</label>
+        <div class="sf-row">
+          <input type="number" class="si si-num" id="sav-start" step="0.01" placeholder="0.00" onchange="applySavingsCfg()">
+        </div>
+      </div>
+      <div class="sf">
+        <label>Expected Annual Growth (%)</label>
+        <div class="sf-row">
+          <input type="number" class="si" style="width:110px" id="sav-growth" step="0.1" min="0" max="100" placeholder="0.0" onchange="applySavingsCfg()">
+        </div>
+      </div>
+      <div class="settings-note">Tag outgoing items as category <strong style="color:var(--gold)">Savings</strong> to include them here</div>
+    </div>
+
+    <div class="sav-stats">
+      <div class="sc"><div class="sl">Opening Savings</div><div class="sv gld" id="sav-sv-open">£0</div><div class="ss" id="sav-ss-open">—</div></div>
+      <div class="sc"><div class="sl">Total Contributions</div><div class="sv pos" id="sav-sv-contrib">£0</div><div class="ss">Over forecast period</div></div>
+      <div class="sc"><div class="sl">Total Growth Earned</div><div class="sv pos" id="sav-sv-growth">£0</div><div class="ss" id="sav-ss-growth">—</div></div>
+      <div class="sc"><div class="sl">Projected Final Value</div><div class="sv gld" id="sav-sv-end">£0</div><div class="ss" id="sav-ss-end">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="sav-chart-title">Savings Growth</div>
+      <canvas id="sav-chart"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Annual Breakdown</div>
+      <table class="sat" id="sat"></table>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">Monthly Detail</div>
+      <div class="smt-wrap"><table class="smt" id="smt"></table></div>
+    </div>
+
+    <div class="sav-items-list" id="sav-items-panel">
+      <div class="sav-items-hdr">Contributing Items (category: Savings)</div>
+      <div id="sav-items-body"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Item modal -->
+<div class="mo" id="imod" onclick="if(event.target===this)closeModal()">
+  <div class="md">
+    <div class="mt" id="mod-title">Edit Item</div>
+    <input type="hidden" id="mod-type"><input type="hidden" id="mod-id">
+    <div class="fg"><label class="fl">Name</label><input type="text" class="fi" id="mod-name"></div>
+    <div class="fg"><label class="fl">Category</label><input type="text" class="fi" id="mod-cat" list="cat-list"><datalist id="cat-list"></datalist></div>
+    <div class="fg"><label class="fl">Base Monthly Amount (£)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
+    <div class="fg">
+      <label class="fl">Monthly Overrides <span style="font-weight:400;text-transform:none;letter-spacing:0;font-style:italic">(values that differ from the base)</span></label>
+      <div class="ovr-list" id="ovr-list"></div>
+      <div class="add-ovr">
+        <select class="fi" id="ovr-mon" style="flex:1;max-width:168px;cursor:pointer"></select>
+        <button class="btn btn-sm btn-g" onclick="addOverride()">Add Override</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-g" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/compute.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+<script>
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  }
+</script>
+</body>
+</html>
