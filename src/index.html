@@ -28,9 +28,10 @@
 
 <nav class="nav">
   <div class="ntab on" onclick="showTab('dashboard',this)">Dashboard</div>
+  <div class="ntab" onclick="showTab('log',this)">Log</div>
   <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
   <div class="ntab" onclick="showTab('savings',this)">Savings</div>
-  <div class="ntab" onclick="showTab('items',this)">Items</div>
+  <div class="ntab" onclick="showTab('budget',this)">Budget</div>
   <div class="ntab" onclick="showTab('settings',this)">Settings</div>
 </nav>
 
@@ -79,19 +80,42 @@
         <div class="ss" id="ss-start">—</div>
       </div>
       <div class="sc">
-        <div class="sl">Minimum Balance</div>
+        <div class="sl">Actual Balance</div>
+        <div class="sv" id="sv-actual">£0</div>
+        <div class="ss" id="ss-actual">Based on logged transactions</div>
+      </div>
+      <div class="sc">
+        <div class="sl">This Month</div>
+        <div class="sv" id="sv-month">£0</div>
+        <div class="ss" id="ss-month">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Forecast End Balance</div>
+        <div class="sv" id="sv-end">£0</div>
+        <div class="ss" id="ss-end">—</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="sc">
+        <div class="sl">Forecast Min Balance</div>
         <div class="sv" id="sv-min">£0</div>
         <div class="ss" id="ss-min">—</div>
       </div>
       <div class="sc">
-        <div class="sl">End Balance</div>
-        <div class="sv" id="sv-end">£0</div>
-        <div class="ss" id="ss-end">—</div>
-      </div>
-      <div class="sc">
-        <div class="sl">Avg Monthly Net</div>
+        <div class="sl">Avg Monthly Net (Forecast)</div>
         <div class="sv" id="sv-avg">£0</div>
         <div class="ss">Income minus outgoings</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Transactions Logged</div>
+        <div class="sv gld" id="sv-txcount">0</div>
+        <div class="ss" id="ss-txcount">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Budget Items</div>
+        <div class="sv gld" id="sv-budgetcount">0</div>
+        <div class="ss">Income + Outgoings</div>
       </div>
     </div>
 
@@ -106,20 +130,80 @@
     </div>
   </div>
 
+  <!-- LOG — daily transaction entry -->
+  <div class="panel" id="tab-log">
+    <div class="log-add card">
+      <div class="card-title">Quick Add Transaction</div>
+      <div class="log-form">
+        <div class="log-form-row">
+          <div class="sf">
+            <label>Date</label>
+            <input type="date" class="si" id="log-date" style="width:150px">
+          </div>
+          <div class="sf" style="flex:1">
+            <label>Description</label>
+            <input type="text" class="fi" id="log-desc" placeholder="e.g. Weekly shop, Salary June…" style="height:36px">
+          </div>
+          <div class="sf">
+            <label>Amount (<span class="cur-sym">£</span>)</label>
+            <input type="number" class="si si-num" id="log-amt" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="log-form-row">
+          <div class="sf">
+            <label>Type</label>
+            <div class="log-type-toggle">
+              <button class="btn log-type-btn active" id="log-type-out" onclick="setLogType('outgoing')">Outgoing</button>
+              <button class="btn log-type-btn" id="log-type-inc" onclick="setLogType('income')">Income</button>
+            </div>
+          </div>
+          <div class="sf" style="flex:1">
+            <label>Category</label>
+            <input type="text" class="fi" id="log-cat" list="log-cat-list" placeholder="e.g. Food & Groceries" style="height:36px">
+            <datalist id="log-cat-list"></datalist>
+          </div>
+          <div class="sf">
+            <button class="btn btn-g" style="height:36px;margin-top:19px;padding:0 24px" onclick="addTransaction()">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-summary" id="log-summary"></div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Transaction History</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="si" id="log-filter-month" style="width:130px;height:28px;font-size:11px" onchange="renderLog()">
+            <option value="all">All Months</option>
+          </select>
+          <select class="si" id="log-filter-type" style="width:100px;height:28px;font-size:11px" onchange="renderLog()">
+            <option value="all">All Types</option>
+            <option value="income">Income</option>
+            <option value="outgoing">Outgoing</option>
+          </select>
+        </div>
+      </div>
+      <div id="log-list"></div>
+      <div id="log-empty" class="sav-empty" style="display:none">No transactions logged yet. Use the form above to add your first entry.</div>
+    </div>
+  </div>
+
   <!-- FORECAST -->
   <div class="panel" id="tab-forecast">
     <div class="fw"><table class="ft" id="ft"></table></div>
   </div>
 
-  <!-- ITEMS -->
-  <div class="panel" id="tab-items">
+  <!-- BUDGET (was Items) -->
+  <div class="panel" id="tab-budget">
     <div class="il">
       <div class="ip">
-        <div class="iph"><div class="ipt">Income Items</div><button class="btn btn-sm btn-g" onclick="openAdd('income')">+ Add Item</button></div>
+        <div class="iph"><div class="ipt">Income Budget</div><button class="btn btn-sm btn-g" onclick="openAdd('income')">+ Add</button></div>
         <div id="inc-list"></div>
       </div>
       <div class="ip">
-        <div class="iph"><div class="ipt">Outgoing Items</div><button class="btn btn-sm btn-g" onclick="openAdd('outgoings')">+ Add Item</button></div>
+        <div class="iph"><div class="ipt">Outgoing Budget</div><button class="btn btn-sm btn-g" onclick="openAdd('outgoings')">+ Add</button></div>
         <div id="out-list"></div>
       </div>
     </div>
@@ -246,13 +330,28 @@
     <div class="fg"><label class="fl">Name</label><input type="text" class="fi" id="mod-name"></div>
     <div class="fg"><label class="fl">Category</label><input type="text" class="fi" id="mod-cat" list="cat-list"><datalist id="cat-list"></datalist></div>
     <div class="fg">
+      <label class="fl">Frequency</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select class="si" id="mod-freq" style="width:180px" onchange="updateFreqUI()">
+          <option value="monthly">Monthly</option>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="annual">Annual</option>
+          <option value="one-off">One-off</option>
+        </select>
+        <select class="si" id="mod-freq-month" style="width:110px;display:none"></select>
+        <span id="mod-freq-hint" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+    </div>
+    <div class="fg">
       <label class="fl">Item Currency</label>
       <div style="display:flex;gap:10px;align-items:center">
         <select class="si" id="mod-currency" style="width:240px" onchange="updateModalCurrencyHint()"></select>
         <span class="mod-fx-hint" id="mod-fx-hint" style="font-size:11px;color:var(--dim)"></span>
       </div>
     </div>
-    <div class="fg"><label class="fl">Base Monthly Amount (<span class="mod-cur-sym cur-sym">£</span>)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
+    <div class="fg"><label class="fl"><span id="mod-base-label">Base Monthly Amount</span> (<span class="mod-cur-sym cur-sym">£</span>)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
     <div class="fg">
       <label class="fl">Monthly Overrides <span style="font-weight:400;text-transform:none;letter-spacing:0;font-style:italic">(values that differ from the base)</span></label>
       <div class="ovr-list" id="ovr-list"></div>

@@ -13,6 +13,7 @@ function load() {
       if (!S.savings) S.savings = deep(DEFAULTS.savings);
       if (!S.settings) S.settings = deep(DEFAULTS.settings);
       if (!S.settings.exchangeRates) S.settings.exchangeRates = {};
+      if (!S.transactions) S.transactions = [];
       return;
     }
   } catch (e) {}
@@ -44,6 +45,7 @@ function doReset() {
   S.startingBalance = 0;
   S.income = [];
   S.outgoings = [];
+  S.transactions = [];
   S.savings.startValue = 0;
   S.settings.exchangeRates = {};
   S.settings.ratesLastUpdated = null;

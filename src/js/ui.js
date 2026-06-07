@@ -42,9 +42,10 @@ function showTab(name, el) {
   document.getElementById('tab-' + name).classList.add('on');
   el.classList.add('on');
   if (name === 'dashboard') renderDash();
+  if (name === 'log') renderLog();
   if (name === 'forecast') renderForecast();
   if (name === 'savings') renderSavings();
-  if (name === 'items') renderItems();
+  if (name === 'budget') renderItems();
   if (name === 'settings') renderSettings();
 }
 
@@ -57,21 +58,54 @@ function renderDash() {
   const avgNet = d.net.reduce((a, b) => a + b, 0) / d.net.length;
   const endM = MONTHS[MONTHS.length - 1];
 
+  // Actuals
+  const act = computeActuals();
+  const cm = currentMonthActuals();
+  const txs = S.transactions || [];
+  // Actual balance = starting balance + all transaction net
+  const actualBal = S.startingBalance + txs.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+
   document.getElementById('sv-start').textContent = fmt(S.startingBalance);
   document.getElementById('ss-start').textContent = mLabel(S.startMonth);
   document.getElementById('chart-title').textContent = `Running Balance — ${mLabel(S.startMonth)} → ${mLabel(endM)}`;
 
-  const sm = document.getElementById('sv-min');
-  sm.textContent = fmt(minBal); sm.className = 'sv ' + (minBal < 0 ? 'neg' : 'pos');
-  document.getElementById('ss-min').textContent = MONTHS[minI] ? mLabel(MONTHS[minI]) : '—';
+  // Actual balance
+  const svAct = document.getElementById('sv-actual');
+  svAct.textContent = fmt(Math.round(actualBal));
+  svAct.className = 'sv ' + (actualBal < 0 ? 'neg' : 'pos');
+  document.getElementById('ss-actual').textContent = txs.length > 0
+    ? `From ${txs.length} transaction${txs.length === 1 ? '' : 's'}`
+    : 'No transactions logged yet';
 
+  // This month
+  const svMo = document.getElementById('sv-month');
+  svMo.textContent = fmt(Math.round(cm.net));
+  svMo.className = 'sv ' + (cm.net < 0 ? 'neg' : cm.net > 0 ? 'pos' : '');
+  document.getElementById('ss-month').textContent = cm.count > 0
+    ? `${mLabel(cm.month)} · ${cm.count} entries`
+    : `${mLabel(cm.month)} · no entries yet`;
+
+  // Forecast end
   const se = document.getElementById('sv-end');
   se.textContent = fmt(endBal); se.className = 'sv ' + (endBal < 0 ? 'neg' : 'pos');
   const negM = d.bals.filter(b => b < 0).length;
   document.getElementById('ss-end').textContent = mLabel(endM) + (negM ? ` · ${negM}mo deficit` : '');
 
+  // Forecast min
+  const sm = document.getElementById('sv-min');
+  sm.textContent = fmt(minBal); sm.className = 'sv ' + (minBal < 0 ? 'neg' : 'pos');
+  document.getElementById('ss-min').textContent = MONTHS[minI] ? mLabel(MONTHS[minI]) : '—';
+
+  // Avg net
   const sa = document.getElementById('sv-avg');
   sa.textContent = fmt(Math.round(avgNet)); sa.className = 'sv ' + (avgNet < 0 ? 'neg' : 'pos');
+
+  // Counts
+  document.getElementById('sv-txcount').textContent = txs.length;
+  document.getElementById('ss-txcount').textContent = txs.length > 0
+    ? `Latest: ${txs.sort((a, b) => b.date.localeCompare(a.date))[0].date}`
+    : 'None yet';
+  document.getElementById('sv-budgetcount').textContent = S.income.length + S.outgoings.length;
 
   drawChart(d);
   renderAnnual(d);
@@ -258,18 +292,23 @@ function renderList(type) {
   const items = type === 'income' ? S.income : S.outgoings;
   const base = (S.settings && S.settings.currency) || 'GBP';
   const el = document.getElementById(type === 'income' ? 'inc-list' : 'out-list');
+  const FREQ_LABELS = { monthly: 'Monthly', weekly: 'Weekly', fortnightly: 'Fortnightly', quarterly: 'Quarterly', annual: 'Annual', 'one-off': 'One-off' };
   el.innerHTML = items.map(item => {
     const oc = Object.keys(item.overrides || {}).length;
     const isForeign = item.currency && item.currency !== base;
+    const freq = item.frequency || 'monthly';
+    const freqLabel = FREQ_LABELS[freq] || freq;
     const nativeAmt = (item.base || 0) > 0 ? fmtAs(item.base, item.currency || base) : '—';
+    const perLabel = freq === 'weekly' ? '/wk' : freq === 'fortnightly' ? '/2wk' : freq === 'quarterly' ? '/qtr' : freq === 'annual' ? '/yr' : freq === 'one-off' ? '' : '/mo';
     const convertedAmt = isForeign && (item.base || 0) > 0
       ? ` → ${fmt(item.base * xrate(item.currency))}`
       : '';
     return `<div class="ir">
       <div class="icat">${item.category}</div>
+      ${freq !== 'monthly' ? `<div class="ifreq">${freqLabel}</div>` : ''}
       ${isForeign ? `<div class="icur">${item.currency}</div>` : ''}
       <div class="iname">${item.name}</div>
-      <div class="ibase">${nativeAmt}/mo${convertedAmt ? `<span style="font-size:10px;color:var(--dim);font-weight:400"> ${convertedAmt}</span>` : ''}</div>
+      <div class="ibase">${nativeAmt}${perLabel}${convertedAmt ? `<span style="font-size:10px;color:var(--dim);font-weight:400"> ${convertedAmt}</span>` : ''}</div>
       <div class="iovr">${oc ? oc + ' override' + (oc === 1 ? '' : 's') : ''}</div>
       <div class="iact">
         <button class="btn btn-sm" onclick="openEdit('${type}','${item.id}')">Edit</button>
@@ -285,10 +324,13 @@ let _mOvr = {};
 function openAdd(type) {
   const cats = [...new Set((type === 'income' ? S.income : S.outgoings).map(i => i.category))];
   document.getElementById('cat-list').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
-  document.getElementById('mod-title').textContent = 'Add ' + (type === 'income' ? 'Income' : 'Outgoing') + ' Item';
+  document.getElementById('mod-title').textContent = 'Add ' + (type === 'income' ? 'Income' : 'Outgoing') + ' Budget Item';
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = '';
   document.getElementById('mod-name').value = ''; document.getElementById('mod-cat').value = '';
   document.getElementById('mod-base').value = '0';
+  document.getElementById('mod-freq').value = 'monthly';
+  populateFreqMonth(null);
+  updateFreqUI();
   populateModalCurrency(null);
   _mOvr = {}; buildOvrList(); buildMonthSel({});
   document.getElementById('imod').classList.add('open');
@@ -299,14 +341,47 @@ function openEdit(type, id) {
   const item = items.find(i => i.id === id); if (!item) return;
   const cats = [...new Set(items.map(i => i.category))];
   document.getElementById('cat-list').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
-  document.getElementById('mod-title').textContent = 'Edit Item';
+  document.getElementById('mod-title').textContent = 'Edit Budget Item';
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = id;
   document.getElementById('mod-name').value = item.name; document.getElementById('mod-cat').value = item.category;
   document.getElementById('mod-base').value = item.base || 0;
+  document.getElementById('mod-freq').value = item.frequency || 'monthly';
+  populateFreqMonth(item.frequencyMonth || null);
+  updateFreqUI();
   populateModalCurrency(item.currency || null);
   _mOvr = Object.assign({}, item.overrides || {});
   buildOvrList(); buildMonthSel(_mOvr);
   document.getElementById('imod').classList.add('open');
+}
+
+function populateFreqMonth(selected) {
+  const sel = document.getElementById('mod-freq-month');
+  sel.innerHTML = MN.map((n, i) => `<option value="${i + 1}" ${(i + 1) === selected ? 'selected' : ''}>${n}</option>`).join('');
+}
+
+function updateFreqUI() {
+  const freq = document.getElementById('mod-freq').value;
+  const monthSel = document.getElementById('mod-freq-month');
+  const hint = document.getElementById('mod-freq-hint');
+  const label = document.getElementById('mod-base-label');
+
+  const needsMonth = (freq === 'quarterly' || freq === 'annual');
+  monthSel.style.display = needsMonth ? '' : 'none';
+
+  const labels = {
+    monthly: 'Amount Per Month', weekly: 'Amount Per Week', fortnightly: 'Amount Per Fortnight',
+    quarterly: 'Amount Per Quarter', annual: 'Amount Per Year', 'one-off': 'One-off Amount'
+  };
+  label.textContent = labels[freq] || 'Amount';
+
+  const hints = {
+    weekly: 'Converted to ~4.33× per month in forecast',
+    fortnightly: 'Converted to ~2.17× per month in forecast',
+    quarterly: 'Applied every 3 months starting from selected month',
+    annual: 'Applied once per year in selected month',
+    'one-off': 'Use overrides to set the specific month'
+  };
+  hint.textContent = hints[freq] || '';
 }
 
 function populateModalCurrency(itemCurrency) {
@@ -369,15 +444,18 @@ function saveItem() {
   const base = parseFloat(document.getElementById('mod-base').value) || 0;
   const itemCur = document.getElementById('mod-currency').value;
   const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const freq = document.getElementById('mod-freq').value;
+  const freqMonth = (freq === 'quarterly' || freq === 'annual') ? +document.getElementById('mod-freq-month').value : undefined;
   if (!name) return alert('Please enter a name.');
   document.querySelectorAll('#ovr-list .ov').forEach(inp => { const v = parseFloat(inp.value); if (!isNaN(v)) _mOvr[inp.dataset.m] = v; });
   const items = type === 'income' ? S.income : S.outgoings;
   const curVal = (itemCur && itemCur !== baseCur) ? itemCur : undefined;
+  const freqVal = freq !== 'monthly' ? freq : undefined;
   if (id) {
     const item = items.find(i => i.id === id);
-    if (item) { item.name = name; item.category = cat; item.base = base; item.overrides = Object.assign({}, _mOvr); item.currency = curVal; }
+    if (item) { item.name = name; item.category = cat; item.base = base; item.overrides = Object.assign({}, _mOvr); item.currency = curVal; item.frequency = freqVal; item.frequencyMonth = freqMonth; }
   } else {
-    items.push({ id: name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(), name, category: cat, base, overrides: Object.assign({}, _mOvr), currency: curVal });
+    items.push({ id: name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(), name, category: cat, base, overrides: Object.assign({}, _mOvr), currency: curVal, frequency: freqVal, frequencyMonth: freqMonth });
   }
   markDirty(); closeModal(); renderItems();
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
@@ -395,9 +473,10 @@ function closeModal() { document.getElementById('imod').classList.remove('open')
 
 function renderAll() {
   if (document.getElementById('tab-dashboard').classList.contains('on')) renderDash();
+  if (document.getElementById('tab-log').classList.contains('on')) renderLog();
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
-  if (document.getElementById('tab-items').classList.contains('on')) renderItems();
+  if (document.getElementById('tab-budget').classList.contains('on')) renderItems();
   if (document.getElementById('tab-settings').classList.contains('on')) renderSettings();
 }
 
@@ -592,4 +671,104 @@ async function doFetchRates() {
 
   btn.disabled = false;
   btn.textContent = '⟳ Fetch Live Rates';
+}
+
+// ─────────────────────────────────────────────
+// LOG TAB — Transaction Entry
+// ─────────────────────────────────────────────
+let _logType = 'outgoing';
+
+function setLogType(type) {
+  _logType = type;
+  document.getElementById('log-type-out').className = 'btn log-type-btn' + (type === 'outgoing' ? ' active' : '');
+  document.getElementById('log-type-inc').className = 'btn log-type-btn' + (type === 'income' ? ' active' : '');
+}
+
+function addTransaction() {
+  const date = document.getElementById('log-date').value;
+  const desc = document.getElementById('log-desc').value.trim();
+  const amount = parseFloat(document.getElementById('log-amt').value) || 0;
+  const cat = document.getElementById('log-cat').value.trim();
+  if (!date) return alert('Please select a date.');
+  if (!desc) return alert('Please enter a description.');
+  if (amount <= 0) return alert('Please enter a positive amount.');
+  if (!S.transactions) S.transactions = [];
+  S.transactions.push({
+    id: 'tx_' + Date.now(),
+    date,
+    name: desc,
+    amount,
+    type: _logType,
+    category: cat || 'Uncategorised'
+  });
+  markDirty();
+  // Clear form (keep date)
+  document.getElementById('log-desc').value = '';
+  document.getElementById('log-amt').value = '';
+  document.getElementById('log-cat').value = '';
+  renderLog();
+}
+
+function deleteTransaction(id) {
+  if (!confirm('Delete this transaction?')) return;
+  S.transactions = (S.transactions || []).filter(t => t.id !== id);
+  markDirty();
+  renderLog();
+}
+
+function renderLog() {
+  // Set default date to today
+  const dateInput = document.getElementById('log-date');
+  if (!dateInput.value) dateInput.value = todayISO();
+
+  // Populate category datalist from existing categories
+  const allCats = new Set();
+  [...S.income, ...S.outgoings].forEach(i => { if (i.category) allCats.add(i.category); });
+  (S.transactions || []).forEach(t => { if (t.category) allCats.add(t.category); });
+  document.getElementById('log-cat-list').innerHTML = [...allCats].sort().map(c => `<option>${c}</option>`).join('');
+
+  const txs = (S.transactions || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+
+  // Month filter
+  const monthFilter = document.getElementById('log-filter-month');
+  const months = [...new Set(txs.map(t => t.date.slice(0, 7)))].sort().reverse();
+  const curFilter = monthFilter.value;
+  monthFilter.innerHTML = '<option value="all">All Months</option>' +
+    months.map(m => `<option value="${m}" ${m === curFilter ? 'selected' : ''}>${mLabel(m)}</option>`).join('');
+
+  const typeFilter = document.getElementById('log-filter-type').value;
+
+  // Apply filters
+  let filtered = txs;
+  if (curFilter && curFilter !== 'all') filtered = filtered.filter(t => t.date.startsWith(curFilter));
+  if (typeFilter !== 'all') filtered = filtered.filter(t => t.type === typeFilter);
+
+  // Summary cards
+  const summaryMonth = (curFilter && curFilter !== 'all') ? curFilter : todayYYYYMM();
+  const mTxs = txs.filter(t => t.date.startsWith(summaryMonth));
+  const mInc = mTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const mOut = mTxs.filter(t => t.type === 'outgoing').reduce((s, t) => s + t.amount, 0);
+  const mNet = mInc - mOut;
+  document.getElementById('log-summary').innerHTML = `
+    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Income</div><div class="sv pos">${fmt(Math.round(mInc))}</div><div class="ss">${mTxs.filter(t => t.type === 'income').length} entries</div></div>
+    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Outgoings</div><div class="sv neg">${fmt(Math.round(mOut))}</div><div class="ss">${mTxs.filter(t => t.type === 'outgoing').length} entries</div></div>
+    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Net</div><div class="sv ${mNet < 0 ? 'neg' : 'pos'}">${fmt(Math.round(mNet))}</div><div class="ss">${mTxs.length} total entries</div></div>
+  `;
+
+  // Transaction list
+  const list = document.getElementById('log-list');
+  const empty = document.getElementById('log-empty');
+  if (filtered.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  list.innerHTML = filtered.map(tx => `<div class="log-row">
+    <div class="log-date">${tx.date}</div>
+    <div class="log-desc">${tx.name}</div>
+    <div class="log-cat">${tx.category || ''}</div>
+    <div class="log-amt ${tx.type === 'income' ? 'cp' : 'cn'}">${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}</div>
+    <button class="log-del" onclick="deleteTransaction('${tx.id}')" title="Delete">✕</button>
+  </div>`).join('');
 }

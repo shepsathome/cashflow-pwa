@@ -2,9 +2,35 @@
 // COMPUTE
 // ─────────────────────────────────────────────
 
-// Raw amount in the item's own currency
+// Raw amount in the item's own currency for a given month
 function amtRaw(item, m) {
-  return (item.overrides && item.overrides[m] !== undefined) ? item.overrides[m] : (item.base || 0);
+  // Overrides always win
+  if (item.overrides && item.overrides[m] !== undefined) return item.overrides[m];
+
+  const freq = item.frequency || 'monthly';
+  const base = item.base || 0;
+
+  switch (freq) {
+    case 'monthly':
+      return base;
+    case 'weekly':
+      return +(base * (52 / 12)).toFixed(2);
+    case 'fortnightly':
+      return +(base * (26 / 12)).toFixed(2);
+    case 'quarterly': {
+      const mo = parseInt(m.split('-')[1]);
+      const anchor = item.frequencyMonth || 1;
+      return ((mo - anchor + 12) % 3 === 0) ? base : 0;
+    }
+    case 'annual': {
+      const mo = parseInt(m.split('-')[1]);
+      return mo === (item.frequencyMonth || 1) ? base : 0;
+    }
+    case 'one-off':
+      return 0; // Only via overrides
+    default:
+      return base;
+  }
 }
 
 // Exchange rate: 1 unit of `code` = ? units of base currency
@@ -98,4 +124,50 @@ function fmt(v, z = true) {
 
 function currencySymbol() {
   return getCurrency().symbol;
+}
+
+// ─────────────────────────────────────────────
+// TRANSACTIONS — actual logged entries
+// ─────────────────────────────────────────────
+function todayYYYYMM() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Compute actual balance from transactions up to a given month
+function computeActuals() {
+  const txs = (S.transactions || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  // Group by YYYY-MM
+  const byMonth = {};
+  for (const tx of txs) {
+    const m = tx.date.slice(0, 7);
+    if (!byMonth[m]) byMonth[m] = { inc: 0, out: 0 };
+    if (tx.type === 'income') byMonth[m].inc += (tx.amount || 0);
+    else byMonth[m].out += (tx.amount || 0);
+  }
+  // Build running balance across MONTHS
+  let bal = S.startingBalance;
+  const inc = [], out = [], net = [], bals = [];
+  for (const m of MONTHS) {
+    const d = byMonth[m] || { inc: 0, out: 0 };
+    inc.push(d.inc);
+    out.push(d.out);
+    net.push(d.inc - d.out);
+    bal += d.inc - d.out;
+    bals.push(bal);
+  }
+  return { inc, out, net, bals, txCount: txs.length };
+}
+
+// Current month's actual totals
+function currentMonthActuals() {
+  const cm = todayYYYYMM();
+  const txs = (S.transactions || []).filter(tx => tx.date.startsWith(cm));
+  const inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
+  const out = txs.filter(t => t.type === 'outgoing').reduce((s, t) => s + (t.amount || 0), 0);
+  return { inc, out, net: inc - out, count: txs.length, month: cm };
 }
