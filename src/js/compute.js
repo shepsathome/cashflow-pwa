@@ -125,10 +125,22 @@ function cacheSharePrice(date, price) {
   }
 }
 
-// Try fetching a URL through multiple CORS proxies
+// Try fetching — local proxy first (same-origin, no CORS), then external proxies as fallback
 async function fetchViaProxy(targetUrl) {
+  // Extract ticker/range/interval from Yahoo URL for local proxy
+  const yahooMatch = targetUrl.match(/chart\/([^?]+)\?(.+)/);
+  if (yahooMatch) {
+    const ticker = decodeURIComponent(yahooMatch[1]);
+    const params = new URLSearchParams(yahooMatch[2]);
+    const localUrl = `/api/yahoo-chart?ticker=${encodeURIComponent(ticker)}&range=${params.get('range') || 'max'}&interval=${params.get('interval') || '1d'}`;
+    try {
+      const resp = await fetch(localUrl, { signal: AbortSignal.timeout(15000) });
+      if (resp.ok) return await resp.json();
+    } catch (e) { /* fall through to external proxies */ }
+  }
+
+  // Fallback: external CORS proxies
   const proxies = [
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
     url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
   ];
@@ -141,7 +153,7 @@ async function fetchViaProxy(targetUrl) {
       continue;
     }
   }
-  throw new Error('All proxy attempts failed — check your network connection');
+  throw new Error('Could not fetch share data — ensure the server is running (node server.js)');
 }
 
 function parseYahooChart(data) {
@@ -167,10 +179,46 @@ function parseYahooChart(data) {
 
 async function fetchShareHistory(ticker, range = 'max') {
   if (!ticker) return { error: 'No ticker set', history: [] };
-  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=1d`;
+
   try {
-    const data = await fetchViaProxy(yahooUrl);
-    return parseYahooChart(data);
+    // Fetch daily (20y) + weekly (full history) and merge for best coverage
+    const dailyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=20y&interval=1d`;
+    const weeklyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=max&interval=1wk`;
+
+    const [dailyData, weeklyData] = await Promise.all([
+      fetchViaProxy(dailyUrl).catch(() => null),
+      fetchViaProxy(weeklyUrl).catch(() => null)
+    ]);
+
+    const merged = new Map();
+    let meta = null;
+
+    // Weekly first (older data, lower resolution)
+    if (weeklyData) {
+      const parsed = parseYahooChart(weeklyData);
+      parsed.history.forEach(h => merged.set(h.date, h));
+      meta = { currentPrice: parsed.currentPrice, currency: parsed.currency, name: parsed.name };
+    }
+
+    // Daily overwrites weekly for overlapping dates (higher resolution)
+    if (dailyData) {
+      const parsed = parseYahooChart(dailyData);
+      parsed.history.forEach(h => merged.set(h.date, h));
+      if (!meta) meta = {};
+      meta.currentPrice = parsed.currentPrice;
+      meta.currency = parsed.currency;
+      meta.name = parsed.name;
+    }
+
+    if (merged.size === 0) throw new Error('No data returned');
+
+    const history = [...merged.values()].sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      history,
+      currentPrice: meta?.currentPrice,
+      currency: meta?.currency || 'USD',
+      name: meta?.name || ticker
+    };
   } catch (err) {
     console.warn('Share history fetch failed:', err);
     return { error: err.message, history: [] };
