@@ -45,7 +45,7 @@ function showTab(name, el) {
   if (name === 'log') renderLog();
   if (name === 'forecast') renderForecast();
   if (name === 'savings') renderSavings();
-  if (name === 'budget') renderItems();
+  if (name === 'recurring') renderItems();
   if (name === 'settings') renderSettings();
 }
 
@@ -324,7 +324,7 @@ let _mOvr = {};
 function openAdd(type) {
   const cats = [...new Set((type === 'income' ? S.income : S.outgoings).map(i => i.category))];
   document.getElementById('cat-list').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
-  document.getElementById('mod-title').textContent = 'Add ' + (type === 'income' ? 'Income' : 'Outgoing') + ' Budget Item';
+  document.getElementById('mod-title').textContent = 'Add Recurring ' + (type === 'income' ? 'Income' : 'Outgoing');
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = '';
   document.getElementById('mod-name').value = ''; document.getElementById('mod-cat').value = '';
   document.getElementById('mod-base').value = '0';
@@ -341,7 +341,7 @@ function openEdit(type, id) {
   const item = items.find(i => i.id === id); if (!item) return;
   const cats = [...new Set(items.map(i => i.category))];
   document.getElementById('cat-list').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
-  document.getElementById('mod-title').textContent = 'Edit Budget Item';
+  document.getElementById('mod-title').textContent = 'Edit Recurring Item';
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = id;
   document.getElementById('mod-name').value = item.name; document.getElementById('mod-cat').value = item.category;
   document.getElementById('mod-base').value = item.base || 0;
@@ -476,7 +476,7 @@ function renderAll() {
   if (document.getElementById('tab-log').classList.contains('on')) renderLog();
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
-  if (document.getElementById('tab-budget').classList.contains('on')) renderItems();
+  if (document.getElementById('tab-recurring').classList.contains('on')) renderItems();
   if (document.getElementById('tab-settings').classList.contains('on')) renderSettings();
 }
 
