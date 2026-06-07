@@ -897,7 +897,13 @@ function drawSharePriceChart(history, sh) {
   cv.style.display = 'block';
   empty.style.display = 'none';
 
+  // Defer to next frame so layout is complete after display:block
+  requestAnimationFrame(() => _drawSharePriceChartInner(cv, history, sh));
+}
+
+function _drawSharePriceChartInner(cv, history, sh) {
   const W = cv.parentElement.clientWidth - 44, H = 220;
+  if (W < 100) return;
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   const pad = { t: 20, r: 16, b: 36, l: 80 };
@@ -977,6 +983,11 @@ function drawPortfolioValueChart(history, sh) {
   cv.style.display = 'block';
   empty.style.display = 'none';
 
+  requestAnimationFrame(() => _drawPortfolioValueChartInner(cv, sh));
+}
+
+function _drawPortfolioValueChartInner(cv, sh) {
+  const empty = document.getElementById('sh-portfolio-empty');
   const pf = computePortfolioHistory();
   if (pf.dates.length < 2) { cv.style.display = 'none'; empty.style.display = ''; return; }
 
@@ -998,6 +1009,7 @@ function drawPortfolioValueChart(history, sh) {
   if (n < 2) { cv.style.display = 'none'; empty.style.display = ''; return; }
 
   const W = cv.parentElement.clientWidth - 44, H = 240;
+  if (W < 100) return;
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   const pad = { t: 24, r: 16, b: 36, l: 80 };
