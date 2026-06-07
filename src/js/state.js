@@ -12,6 +12,7 @@ function load() {
       S = JSON.parse(r);
       if (!S.savings) S.savings = deep(DEFAULTS.savings);
       if (!S.settings) S.settings = deep(DEFAULTS.settings);
+      if (!S.settings.exchangeRates) S.settings.exchangeRates = {};
       return;
     }
   } catch (e) {}

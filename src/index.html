@@ -178,10 +178,21 @@
     <div class="settings-page">
       <div class="settings-section">
         <div class="settings-section-title">Currency</div>
-        <div class="settings-section-desc">Choose the currency used for all amounts, charts and tables.</div>
+        <div class="settings-section-desc">Choose the base currency for totals, charts and balances. Individual items can use a different currency — they'll be converted using the exchange rates below.</div>
         <div class="sf">
-          <label>Display Currency</label>
+          <label>Base / Display Currency</label>
           <select class="si" id="set-currency" style="width:260px" onchange="applySettings()"></select>
+        </div>
+      </div>
+
+      <div class="settings-section" id="fx-section">
+        <div class="settings-section-title">Exchange Rates</div>
+        <div class="settings-section-desc">Rates used to convert foreign-currency items into your base currency. These are set as: <strong>1 foreign unit = ? base units</strong>.</div>
+        <div id="fx-rates-list"></div>
+        <div id="fx-no-foreign" class="fx-empty" style="display:none">No items use a foreign currency yet. Edit an item and change its currency to see rates here.</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-g" id="fx-fetch-btn" onclick="doFetchRates()">⟳ Fetch Live Rates</button>
+          <span id="fx-status" style="font-size:11px;color:var(--dim)"></span>
         </div>
       </div>
 
@@ -234,7 +245,14 @@
     <input type="hidden" id="mod-type"><input type="hidden" id="mod-id">
     <div class="fg"><label class="fl">Name</label><input type="text" class="fi" id="mod-name"></div>
     <div class="fg"><label class="fl">Category</label><input type="text" class="fi" id="mod-cat" list="cat-list"><datalist id="cat-list"></datalist></div>
-    <div class="fg"><label class="fl">Base Monthly Amount (<span class="cur-sym">£</span>)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
+    <div class="fg">
+      <label class="fl">Item Currency</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select class="si" id="mod-currency" style="width:240px" onchange="updateModalCurrencyHint()"></select>
+        <span class="mod-fx-hint" id="mod-fx-hint" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Base Monthly Amount (<span class="mod-cur-sym cur-sym">£</span>)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
     <div class="fg">
       <label class="fl">Monthly Overrides <span style="font-weight:400;text-transform:none;letter-spacing:0;font-style:italic">(values that differ from the base)</span></label>
       <div class="ovr-list" id="ovr-list"></div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cashflow-v1';
+const CACHE_NAME = 'cashflow-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -32,7 +32,7 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch — cache-first for app shell, network-first for fonts
+// Fetch — cache-first for app shell, network-first for fonts and API
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -47,6 +47,12 @@ self.addEventListener('fetch', event => {
         })
         .catch(() => caches.match(event.request))
     );
+    return;
+  }
+
+  // Exchange rate API — always network, no cache
+  if (url.hostname.includes('frankfurter.app')) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

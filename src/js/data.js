@@ -42,7 +42,11 @@ const DEFAULTS = {
   startingBalance: 12500,
   startMonth: '2026-01',
   forecastYears: 5,
-  settings: { currency: 'GBP' },
+  settings: {
+    currency: 'GBP',
+    exchangeRates: {},      // e.g. { EUR: 0.845 } — 1 EUR = 0.845 base currency
+    ratesLastUpdated: null   // ISO timestamp of last fetch
+  },
   savings: { startValue: 8000, growthPct: 4.5 },
   income: [
     { id: 'salary_1', name: 'Salary — Partner 1', category: 'Salaries', base: 3500, overrides: {} },

@@ -256,13 +256,20 @@ function renderItems() { renderList('income'); renderList('outgoings'); }
 
 function renderList(type) {
   const items = type === 'income' ? S.income : S.outgoings;
+  const base = (S.settings && S.settings.currency) || 'GBP';
   const el = document.getElementById(type === 'income' ? 'inc-list' : 'out-list');
   el.innerHTML = items.map(item => {
     const oc = Object.keys(item.overrides || {}).length;
+    const isForeign = item.currency && item.currency !== base;
+    const nativeAmt = (item.base || 0) > 0 ? fmtAs(item.base, item.currency || base) : '—';
+    const convertedAmt = isForeign && (item.base || 0) > 0
+      ? ` → ${fmt(item.base * xrate(item.currency))}`
+      : '';
     return `<div class="ir">
       <div class="icat">${item.category}</div>
+      ${isForeign ? `<div class="icur">${item.currency}</div>` : ''}
       <div class="iname">${item.name}</div>
-      <div class="ibase">${(item.base || 0) > 0 ? fmt(item.base) : '—'}/mo</div>
+      <div class="ibase">${nativeAmt}/mo${convertedAmt ? `<span style="font-size:10px;color:var(--dim);font-weight:400"> ${convertedAmt}</span>` : ''}</div>
       <div class="iovr">${oc ? oc + ' override' + (oc === 1 ? '' : 's') : ''}</div>
       <div class="iact">
         <button class="btn btn-sm" onclick="openEdit('${type}','${item.id}')">Edit</button>
@@ -282,6 +289,7 @@ function openAdd(type) {
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = '';
   document.getElementById('mod-name').value = ''; document.getElementById('mod-cat').value = '';
   document.getElementById('mod-base').value = '0';
+  populateModalCurrency(null);
   _mOvr = {}; buildOvrList(); buildMonthSel({});
   document.getElementById('imod').classList.add('open');
 }
@@ -295,9 +303,40 @@ function openEdit(type, id) {
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = id;
   document.getElementById('mod-name').value = item.name; document.getElementById('mod-cat').value = item.category;
   document.getElementById('mod-base').value = item.base || 0;
+  populateModalCurrency(item.currency || null);
   _mOvr = Object.assign({}, item.overrides || {});
   buildOvrList(); buildMonthSel(_mOvr);
   document.getElementById('imod').classList.add('open');
+}
+
+function populateModalCurrency(itemCurrency) {
+  const sel = document.getElementById('mod-currency');
+  const base = (S.settings && S.settings.currency) || 'GBP';
+  const selected = itemCurrency || base;
+  sel.innerHTML = Object.entries(CURRENCIES)
+    .map(([code, c]) => `<option value="${code}" ${code === selected ? 'selected' : ''}>${code} — ${c.name}</option>`)
+    .join('');
+  updateModalCurrencyHint();
+}
+
+function updateModalCurrencyHint() {
+  const code = document.getElementById('mod-currency').value;
+  const base = (S.settings && S.settings.currency) || 'GBP';
+  const hint = document.getElementById('mod-fx-hint');
+  const sym = document.querySelector('.mod-cur-sym');
+  if (sym) sym.textContent = (CURRENCIES[code] || {}).symbol || code;
+  if (code === base) {
+    hint.textContent = '(base currency)';
+  } else {
+    const rate = xrate(code);
+    if (rate === 1) {
+      hint.textContent = '⚠ No rate set — go to Settings → Exchange Rates';
+      hint.style.color = 'var(--amber)';
+    } else {
+      hint.textContent = `1 ${code} = ${rate} ${base}`;
+      hint.style.color = 'var(--dim)';
+    }
+  }
 }
 
 function buildOvrList() {
@@ -328,14 +367,17 @@ function saveItem() {
   const name = document.getElementById('mod-name').value.trim();
   const cat = document.getElementById('mod-cat').value.trim();
   const base = parseFloat(document.getElementById('mod-base').value) || 0;
+  const itemCur = document.getElementById('mod-currency').value;
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
   if (!name) return alert('Please enter a name.');
   document.querySelectorAll('#ovr-list .ov').forEach(inp => { const v = parseFloat(inp.value); if (!isNaN(v)) _mOvr[inp.dataset.m] = v; });
   const items = type === 'income' ? S.income : S.outgoings;
+  const curVal = (itemCur && itemCur !== baseCur) ? itemCur : undefined;
   if (id) {
     const item = items.find(i => i.id === id);
-    if (item) { item.name = name; item.category = cat; item.base = base; item.overrides = Object.assign({}, _mOvr); }
+    if (item) { item.name = name; item.category = cat; item.base = base; item.overrides = Object.assign({}, _mOvr); item.currency = curVal; }
   } else {
-    items.push({ id: name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(), name, category: cat, base, overrides: Object.assign({}, _mOvr) });
+    items.push({ id: name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now(), name, category: cat, base, overrides: Object.assign({}, _mOvr), currency: curVal });
   }
   markDirty(); closeModal(); renderItems();
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
@@ -390,6 +432,7 @@ function renderSettings() {
   document.getElementById('set-fy').value = S.forecastYears;
 
   updateCurrencyLabels();
+  renderExchangeRates();
 }
 
 function applySettings() {
@@ -447,4 +490,106 @@ function importData(input) {
   };
   reader.readAsText(file);
   input.value = '';
+}
+
+// ─────────────────────────────────────────────
+// EXCHANGE RATES UI
+// ─────────────────────────────────────────────
+function getForeignCurrenciesInUse() {
+  const base = (S.settings && S.settings.currency) || 'GBP';
+  const used = new Set();
+  [...S.income, ...S.outgoings].forEach(item => {
+    if (item.currency && item.currency !== base) used.add(item.currency);
+  });
+  return [...used].sort();
+}
+
+function renderExchangeRates() {
+  const base = (S.settings && S.settings.currency) || 'GBP';
+  const foreign = getForeignCurrenciesInUse();
+  const list = document.getElementById('fx-rates-list');
+  const noFx = document.getElementById('fx-no-foreign');
+  const rates = (S.settings && S.settings.exchangeRates) || {};
+
+  if (foreign.length === 0) {
+    list.innerHTML = '';
+    noFx.style.display = '';
+    return;
+  }
+  noFx.style.display = 'none';
+
+  // Count items per foreign currency
+  const itemCounts = {};
+  [...S.income, ...S.outgoings].forEach(item => {
+    if (item.currency && item.currency !== base) {
+      itemCounts[item.currency] = (itemCounts[item.currency] || 0) + 1;
+    }
+  });
+
+  list.innerHTML = foreign.map(code => {
+    const rate = rates[code] || '';
+    const cur = CURRENCIES[code] || {};
+    const count = itemCounts[code] || 0;
+    return `<div class="fx-row">
+      <div class="fx-label">${code}</div>
+      <div class="fx-eq">1 ${code} =</div>
+      <input type="number" class="fx-input" data-code="${code}" value="${rate}" step="0.0001" min="0"
+        placeholder="0.0000" onchange="applyManualRate('${code}', this.value)">
+      <div class="fx-base">${base}</div>
+      <div class="fx-item-tag">${count} item${count === 1 ? '' : 's'}</div>
+    </div>`;
+  }).join('');
+
+  // Show last-updated timestamp
+  const status = document.getElementById('fx-status');
+  if (S.settings.ratesLastUpdated) {
+    const d = new Date(S.settings.ratesLastUpdated);
+    status.textContent = `Last fetched: ${d.toLocaleDateString('en-GB')} ${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`;
+  } else {
+    status.textContent = foreign.length > 0 ? 'Rates not yet fetched' : '';
+  }
+}
+
+function applyManualRate(code, val) {
+  const rate = parseFloat(val);
+  if (!S.settings.exchangeRates) S.settings.exchangeRates = {};
+  if (!isNaN(rate) && rate > 0) {
+    S.settings.exchangeRates[code] = +rate.toFixed(6);
+  } else {
+    delete S.settings.exchangeRates[code];
+  }
+  markDirty();
+}
+
+async function doFetchRates() {
+  const btn = document.getElementById('fx-fetch-btn');
+  const status = document.getElementById('fx-status');
+  btn.disabled = true;
+  btn.textContent = '⟳ Fetching…';
+  status.textContent = 'Contacting frankfurter.app…';
+  status.style.color = 'var(--dim)';
+
+  const result = await fetchExchangeRates();
+
+  if (result.error) {
+    status.textContent = '⚠ ' + result.error;
+    status.style.color = 'var(--red)';
+  } else if (Object.keys(result.rates).length === 0) {
+    status.textContent = 'No foreign currencies to fetch rates for.';
+    status.style.color = 'var(--dim)';
+  } else {
+    // Merge fetched rates into settings (preserves manual overrides for currencies not fetched)
+    if (!S.settings.exchangeRates) S.settings.exchangeRates = {};
+    for (const [code, rate] of Object.entries(result.rates)) {
+      S.settings.exchangeRates[code] = rate;
+    }
+    S.settings.ratesLastUpdated = new Date().toISOString();
+    markDirty();
+    status.textContent = `✓ Updated ${Object.keys(result.rates).length} rate(s) — ECB data from ${result.date}`;
+    status.style.color = 'var(--green)';
+    renderExchangeRates();
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⟳ Fetch Live Rates';
 }
