@@ -233,35 +233,7 @@
   <!-- SHARES -->
   <div class="panel" id="tab-shares">
 
-    <div class="shares-config card">
-      <div class="card-title">Share Portfolio Setup</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-        <div class="sf">
-          <label>Company</label>
-          <input type="text" class="si" id="sh-company" style="width:180px" placeholder="e.g. Microsoft" onchange="applySharesCfg()">
-        </div>
-        <div class="sf">
-          <label>Ticker</label>
-          <input type="text" class="si" id="sh-ticker" style="width:90px" placeholder="MSFT" onchange="applySharesCfg()">
-        </div>
-        <div class="sf">
-          <label>Current Share Price</label>
-          <div class="sf-row">
-            <input type="number" class="si si-num" id="sh-price" step="0.01" placeholder="0.00" onchange="applySharesCfg()">
-            <button class="btn btn-sm" id="sh-fetch-price-btn" onclick="doFetchSharePrice()" title="Fetch live price">⟳</button>
-          </div>
-        </div>
-        <div class="sf">
-          <label>Share Currency</label>
-          <select class="si" id="sh-currency" style="width:120px" onchange="applySharesCfg()"></select>
-        </div>
-        <div class="sf">
-          <label>CGT Rate (%)</label>
-          <input type="number" class="si" id="sh-cgt" style="width:80px" step="0.1" min="0" max="100" value="30" onchange="applySharesCfg()">
-        </div>
-      </div>
-      <div id="sh-price-status" class="sh-status"></div>
-    </div>
+    <div id="sh-auto-status" class="sh-status" style="padding:0 0 12px"></div>
 
     <div class="stats" id="sh-stats">
       <div class="sc"><div class="sl">Total Shares</div><div class="sv gld" id="sh-sv-total">0</div><div class="ss" id="sh-ss-total">—</div></div>
@@ -280,12 +252,10 @@
             <option value="365" selected>1 Year</option>
             <option value="0">All Time</option>
           </select>
-          <button class="btn btn-sm btn-g" id="sh-fetch-hist-btn" onclick="doFetchShareHistory()">⟳ Fetch History</button>
         </div>
       </div>
       <canvas id="sh-price-chart"></canvas>
-      <div id="sh-chart-empty" class="sav-empty" style="display:none">No price history yet. Click "Fetch History" or update the share price to start tracking.</div>
-      <div id="sh-fetch-status" class="sh-status"></div>
+      <div id="sh-chart-empty" class="sav-empty" style="display:none">No price history yet. Set a ticker in Settings to start tracking.</div>
     </div>
 
     <div class="card">
@@ -374,6 +344,30 @@
             </select>
           </div>
         </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Shares</div>
+        <div class="settings-section-desc">Configure the company whose shares you hold. Price history is fetched automatically when you visit the Shares tab.</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+          <div class="sf">
+            <label>Company</label>
+            <input type="text" class="si" id="sh-company" style="width:180px" placeholder="e.g. Microsoft" onchange="applySharesCfg()">
+          </div>
+          <div class="sf">
+            <label>Ticker</label>
+            <input type="text" class="si" id="sh-ticker" style="width:100px" placeholder="MSFT" onchange="applySharesCfg()">
+          </div>
+          <div class="sf">
+            <label>Share Currency</label>
+            <select class="si" id="sh-currency" style="width:130px" onchange="applySharesCfg()"></select>
+          </div>
+          <div class="sf">
+            <label>CGT Rate (%)</label>
+            <input type="number" class="si" id="sh-cgt" style="width:80px" step="0.1" min="0" max="100" value="30" onchange="applySharesCfg()">
+          </div>
+        </div>
+        <div id="sh-settings-status" class="sh-status"></div>
       </div>
 
       <div class="settings-section">

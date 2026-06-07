@@ -50,8 +50,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Exchange rate API and stock price proxy — always network, no cache
-  if (url.hostname.includes('frankfurter.app') || url.hostname.includes('allorigins.win')) {
+  // Exchange rate and stock price proxies — always network, no cache
+  if (url.hostname.includes('frankfurter.app') || url.hostname.includes('allorigins.win')
+      || url.hostname.includes('corsproxy.io') || url.hostname.includes('codetabs.com')) {
     event.respondWith(fetch(event.request));
     return;
   }

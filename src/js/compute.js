@@ -111,7 +111,7 @@ async function fetchExchangeRates() {
 }
 
 // ─────────────────────────────────────────────
-// SHARE PRICE FETCHING (Yahoo Finance via allorigins CORS proxy)
+// SHARE PRICE FETCHING — tries multiple CORS proxies
 // ─────────────────────────────────────────────
 function cacheSharePrice(date, price) {
   if (!S.shares) return;
@@ -125,56 +125,67 @@ function cacheSharePrice(date, price) {
   }
 }
 
-async function fetchSharePrice(ticker) {
-  if (!ticker) return { error: 'No ticker set' };
-  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1d&interval=1d`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-  try {
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    const meta = data.chart?.result?.[0]?.meta;
-    if (!meta) throw new Error('No data returned for ticker');
-    const price = meta.regularMarketPrice;
-    const currency = meta.currency || 'USD';
-    return { price, currency, exchange: meta.exchangeName, name: meta.shortName || ticker };
-  } catch (err) {
-    console.warn('Share price fetch failed:', err);
-    return { error: err.message };
+// Try fetching a URL through multiple CORS proxies
+async function fetchViaProxy(targetUrl) {
+  const proxies = [
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  ];
+  for (const makeProxy of proxies) {
+    try {
+      const resp = await fetch(makeProxy(targetUrl), { signal: AbortSignal.timeout(10000) });
+      if (!resp.ok) continue;
+      return await resp.json();
+    } catch (e) {
+      continue;
+    }
   }
+  throw new Error('All proxy attempts failed — check your network connection');
 }
 
-async function fetchShareHistory(ticker, range = '1y') {
+function parseYahooChart(data) {
+  const result = data?.chart?.result?.[0];
+  if (!result) throw new Error('No data returned for this ticker');
+  const timestamps = result.timestamp || [];
+  const closes = result.indicators?.quote?.[0]?.close || [];
+  const history = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    if (closes[i] != null) {
+      const d = new Date(timestamps[i] * 1000);
+      history.push({ date: d.toISOString().slice(0, 10), price: +closes[i].toFixed(2) });
+    }
+  }
+  const meta = result.meta;
+  return {
+    history,
+    currentPrice: meta?.regularMarketPrice,
+    currency: meta?.currency || 'USD',
+    name: meta?.shortName || ''
+  };
+}
+
+async function fetchShareHistory(ticker, range = '5y') {
   if (!ticker) return { error: 'No ticker set', history: [] };
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=1d`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
   try {
-    const resp = await fetch(proxyUrl);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    const result = data.chart?.result?.[0];
-    if (!result) throw new Error('No data returned');
-    const timestamps = result.timestamp || [];
-    const closes = result.indicators?.quote?.[0]?.close || [];
-    const history = [];
-    for (let i = 0; i < timestamps.length; i++) {
-      if (closes[i] != null) {
-        const d = new Date(timestamps[i] * 1000);
-        const dateStr = d.toISOString().slice(0, 10);
-        history.push({ date: dateStr, price: +closes[i].toFixed(2) });
-      }
-    }
-    const meta = result.meta;
-    return {
-      history,
-      currentPrice: meta?.regularMarketPrice,
-      currency: meta?.currency || 'USD',
-      name: meta?.shortName || ticker
-    };
+    const data = await fetchViaProxy(yahooUrl);
+    return parseYahooChart(data);
   } catch (err) {
     console.warn('Share history fetch failed:', err);
     return { error: err.message, history: [] };
   }
+}
+
+function sharesNeedsFetch() {
+  const sh = S.shares || {};
+  if (!sh.ticker) return false;
+  const history = sh.priceHistory || [];
+  if (history.length === 0) return true;
+  const latest = history[history.length - 1];
+  // Refetch if latest cached price is older than 24 hours
+  const age = Date.now() - new Date(latest.date + 'T23:59:59').getTime();
+  return age > 24 * 60 * 60 * 1000;
 }
 
 function computePortfolioHistory() {

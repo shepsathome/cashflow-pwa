@@ -512,6 +512,7 @@ function renderSettings() {
 
   updateCurrencyLabels();
   renderExchangeRates();
+  populateSharesSettings();
 }
 
 function applySettings() {
@@ -677,36 +678,16 @@ async function doFetchRates() {
 // ─────────────────────────────────────────────
 function renderShares() {
   const sh = S.shares || {};
-  // Populate config fields
-  document.getElementById('sh-company').value = sh.companyName || '';
-  document.getElementById('sh-ticker').value = sh.ticker || '';
-  document.getElementById('sh-price').value = sh.currentPrice || '';
-  document.getElementById('sh-cgt').value = sh.cgtRate ?? 30;
 
-  // Currency dropdown
-  const curSel = document.getElementById('sh-currency');
-  const shCur = sh.currency || 'USD';
-  curSel.innerHTML = Object.entries(CURRENCIES)
-    .map(([code, c]) => `<option value="${code}" ${code === shCur ? 'selected' : ''}>${code}</option>`)
-    .join('');
-
-  // Update lot form currency label
-  const lotCurLabel = document.getElementById('sh-lot-cur');
-  if (lotCurLabel) lotCurLabel.textContent = (CURRENCIES[shCur] || {}).symbol || shCur;
-
-  // Auto-cache today's price
+  // Auto-cache today's price if set
   autoCacheSharePrice();
 
-  // Show last-updated info
-  const history = (sh.priceHistory || []);
-  const statusEl = document.getElementById('sh-price-status');
-  if (history.length > 0) {
-    const latest = history[history.length - 1];
-    statusEl.textContent = `${history.length} price points cached · Latest: ${latest.date}`;
-  } else {
-    statusEl.textContent = sh.ticker ? 'No price history — click ⟳ Fetch History to load' : '';
+  // Auto-fetch if stale or empty
+  if (sharesNeedsFetch() && !window._shFetching) {
+    autoFetchShareHistory();
   }
 
+  const history = (sh.priceHistory || []);
   const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const price = sh.currentPrice || 0;
   const cgtRate = (sh.cgtRate ?? 30) / 100;
@@ -818,20 +799,47 @@ function autoCacheSharePrice() {
 function applySharesCfg() {
   if (!S.shares) S.shares = deep(DEFAULTS.shares);
   S.shares.companyName = document.getElementById('sh-company').value.trim();
+  const oldTicker = S.shares.ticker;
   S.shares.ticker = document.getElementById('sh-ticker').value.trim().toUpperCase();
-  S.shares.currentPrice = parseFloat(document.getElementById('sh-price').value) || 0;
   S.shares.currency = document.getElementById('sh-currency').value;
   S.shares.cgtRate = parseFloat(document.getElementById('sh-cgt').value) || 0;
   markDirty();
-  renderShares();
+  // If ticker changed, clear history and re-fetch next time
+  if (oldTicker !== S.shares.ticker) {
+    S.shares.priceHistory = [];
+    S.shares.currentPrice = 0;
+    const status = document.getElementById('sh-settings-status');
+    if (status) status.textContent = S.shares.ticker ? `Ticker changed to ${S.shares.ticker} — history will load on the Shares tab` : '';
+  }
+}
+
+// Populate shares config fields on the Settings page
+function populateSharesSettings() {
+  const sh = S.shares || {};
+  document.getElementById('sh-company').value = sh.companyName || '';
+  document.getElementById('sh-ticker').value = sh.ticker || '';
+  document.getElementById('sh-cgt').value = sh.cgtRate ?? 30;
+  const curSel = document.getElementById('sh-currency');
+  const shCur = sh.currency || 'USD';
+  curSel.innerHTML = Object.entries(CURRENCIES)
+    .map(([code, c]) => `<option value="${code}" ${code === shCur ? 'selected' : ''}>${code}</option>`)
+    .join('');
+  const status = document.getElementById('sh-settings-status');
+  const hist = sh.priceHistory || [];
+  if (hist.length > 0) {
+    status.textContent = `${hist.length} cached price points · Latest: ${hist[hist.length - 1].date}`;
+  } else {
+    status.textContent = sh.ticker ? 'No price history cached yet' : '';
+  }
 }
 
 function toggleAddLot() {
   const el = document.getElementById('sh-add-lot');
   el.style.display = el.style.display === 'none' ? '' : 'none';
   if (el.style.display !== 'none') {
+    const sh = S.shares || {};
     document.getElementById('sh-lot-date').value = todayISO();
-    document.getElementById('sh-lot-cur').textContent = (CURRENCIES[(S.shares || {}).currency || 'USD'] || {}).symbol || '$';
+    document.getElementById('sh-lot-cur').textContent = (CURRENCIES[sh.currency || 'USD'] || {}).symbol || '$';
   }
 }
 
@@ -1067,64 +1075,42 @@ function drawPortfolioValueChart(history, sh) {
   ctx.fillStyle = '#1d4ed8'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Net After CGT', lx + 18, pad.t + 3);
 }
 
-// ─── Fetch handlers ───
-async function doFetchSharePrice() {
+// ─── Auto-fetch handler ───
+async function autoFetchShareHistory() {
   const sh = S.shares || {};
-  if (!sh.ticker) return alert('Set a ticker symbol first.');
-  const btn = document.getElementById('sh-fetch-price-btn');
-  const status = document.getElementById('sh-price-status');
-  btn.disabled = true; btn.textContent = '…';
-  status.textContent = 'Fetching live price…';
-  status.style.color = 'var(--dim)';
-
-  const result = await fetchSharePrice(sh.ticker);
-  if (result.error) {
-    status.textContent = '⚠ ' + result.error;
-    status.style.color = 'var(--red)';
-  } else {
-    S.shares.currentPrice = result.price;
-    document.getElementById('sh-price').value = result.price;
-    cacheSharePrice(todayISO(), result.price);
-    markDirty();
-    status.textContent = `✓ ${result.name || sh.ticker}: ${(CURRENCIES[result.currency] || {}).symbol || '$'}${result.price} (${result.exchange || ''})`;
-    status.style.color = 'var(--green)';
-    renderShares();
+  if (!sh.ticker) return;
+  window._shFetching = true;
+  const statusEl = document.getElementById('sh-auto-status');
+  if (statusEl) {
+    statusEl.textContent = `⟳ Loading ${sh.ticker} price history…`;
+    statusEl.style.color = 'var(--dim)';
   }
-  btn.disabled = false; btn.textContent = '⟳';
-}
-
-async function doFetchShareHistory() {
-  const sh = S.shares || {};
-  if (!sh.ticker) return alert('Set a ticker symbol first.');
-  const btn = document.getElementById('sh-fetch-hist-btn');
-  const status = document.getElementById('sh-fetch-status');
-  btn.disabled = true; btn.textContent = '⟳ Fetching…';
-  status.textContent = 'Fetching price history from Yahoo Finance…';
-  status.style.color = 'var(--dim)';
 
   const result = await fetchShareHistory(sh.ticker, '5y');
+
   if (result.error) {
-    status.textContent = '⚠ ' + result.error;
-    status.style.color = 'var(--red)';
+    if (statusEl) { statusEl.textContent = '⚠ Could not fetch prices: ' + result.error; statusEl.style.color = 'var(--red)'; }
+  } else if (result.history.length === 0) {
+    if (statusEl) { statusEl.textContent = '⚠ No price data found for ' + sh.ticker; statusEl.style.color = 'var(--amber)'; }
   } else {
+    // Merge into cache
     if (!S.shares.priceHistory) S.shares.priceHistory = [];
-    // Merge — keep newer data for overlapping dates
     const existing = new Map(S.shares.priceHistory.map(p => [p.date, p]));
-    for (const h of result.history) {
-      existing.set(h.date, h);
-    }
+    for (const h of result.history) existing.set(h.date, h);
     S.shares.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
-    // Update current price
-    if (result.currentPrice) {
-      S.shares.currentPrice = result.currentPrice;
-      document.getElementById('sh-price').value = result.currentPrice;
-    }
+    // Update current price from latest data
+    if (result.currentPrice) S.shares.currentPrice = result.currentPrice;
     markDirty();
-    status.textContent = `✓ Loaded ${result.history.length} data points (${result.history[0]?.date} → ${result.history[result.history.length - 1]?.date})`;
-    status.style.color = 'var(--green)';
+    if (statusEl) {
+      statusEl.textContent = `✓ ${result.history.length} price points loaded · ${sh.companyName || sh.ticker} · Latest: ${fmtAs(result.currentPrice, sh.currency || 'USD')}`;
+      statusEl.style.color = 'var(--green)';
+    }
+    renderSharesCharts();
+    // Re-render stats with updated price (but don't re-trigger fetch)
+    window._shFetching = true;
     renderShares();
   }
-  btn.disabled = false; btn.textContent = '⟳ Fetch History';
+  window._shFetching = false;
 }
 
 // ─────────────────────────────────────────────
