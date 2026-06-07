@@ -39,8 +39,14 @@ function badge() {
 }
 
 function doReset() {
-  if (!confirm('Reset all data to the original default values?')) return;
+  if (!confirm('This will remove all items and reset balances to zero. Continue?')) return;
   S = deep(DEFAULTS);
+  S.startingBalance = 0;
+  S.income = [];
+  S.outgoings = [];
+  S.savings.startValue = 0;
+  S.settings.exchangeRates = {};
+  S.settings.ratesLastUpdated = null;
   save();
   populateCfg();
   rebuildMonths();
