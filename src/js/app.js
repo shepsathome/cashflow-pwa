@@ -5,6 +5,7 @@ load();
 rebuildMonths();
 populateCfg();
 renderDash();
+initSync();
 
 window.addEventListener('resize', () => {
   if (document.getElementById('tab-dashboard').classList.contains('on')) drawChart(compute());

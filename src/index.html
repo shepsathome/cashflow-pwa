@@ -400,6 +400,34 @@
           <button class="btn btn-del" onclick="doReset()">Reset to Defaults</button>
         </div>
       </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Cloud Sync</div>
+        <div class="settings-section-desc">
+          Link a folder (e.g. OneDrive, Dropbox, Google Drive) to automatically save and load your data.
+          The app writes a single <code>cashflow-data.json</code> file to the folder you choose —
+          your cloud service syncs it automatically.
+        </div>
+        <div id="sync-status-area">
+          <div id="sync-not-linked" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-g" onclick="linkSyncFolder()">📁 Choose Sync Folder</button>
+            <span class="sh-status" id="sync-api-note"></span>
+          </div>
+          <div id="sync-linked" style="display:none">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+              <div class="sync-folder-badge" id="sync-folder-name">—</div>
+              <button class="btn btn-sm" onclick="syncNow()">⟳ Sync Now</button>
+              <button class="btn btn-sm btn-del" onclick="unlinkSyncFolder()">Unlink</button>
+            </div>
+            <div class="sh-status" id="sync-last-status"></div>
+            <div style="margin-top:10px">
+              <label style="font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="sync-auto" onchange="toggleAutoSync()" checked> Auto-sync on every save
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
