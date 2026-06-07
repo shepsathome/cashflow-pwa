@@ -45,17 +45,35 @@ function renderDash() {
   // Actual balance = starting balance + all transaction net
   const actualBal = S.startingBalance + txs.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
 
-  document.getElementById('sv-start').textContent = fmt(S.startingBalance);
-  document.getElementById('ss-start').textContent = mLabel(S.startMonth);
   document.getElementById('chart-title').textContent = `Running Balance — ${mLabel(S.startMonth)} → ${mLabel(endM)}`;
 
-  // Actual balance
+  // Current balance (from transactions)
   const svAct = document.getElementById('sv-actual');
   svAct.textContent = fmt(Math.round(actualBal));
   svAct.className = 'sv ' + (actualBal < 0 ? 'neg' : 'pos');
   document.getElementById('ss-actual').textContent = txs.length > 0
     ? `From ${txs.length} transaction${txs.length === 1 ? '' : 's'}`
     : 'No transactions logged yet';
+
+  // Balance (Start of Month) — starting balance + transactions before this month
+  const curMonth = todayYYYYMM();
+  const priorTxNet = txs.filter(t => t.date.slice(0, 7) < curMonth)
+    .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+  const startOfMonthBal = S.startingBalance + priorTxNet;
+  const svSoM = document.getElementById('sv-start-month');
+  svSoM.textContent = fmt(Math.round(startOfMonthBal));
+  svSoM.className = 'sv ' + (startOfMonthBal < 0 ? 'neg' : 'gld');
+  document.getElementById('ss-start-month').textContent = mLabel(curMonth);
+
+  // Balance (Start of Year) — starting balance + transactions before this year
+  const curYear = new Date().getFullYear().toString();
+  const priorYearTxNet = txs.filter(t => t.date.slice(0, 4) < curYear)
+    .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+  const startOfYearBal = S.startingBalance + priorYearTxNet;
+  const svSoY = document.getElementById('sv-start-year');
+  svSoY.textContent = fmt(Math.round(startOfYearBal));
+  svSoY.className = 'sv ' + (startOfYearBal < 0 ? 'neg' : 'gld');
+  document.getElementById('ss-start-year').textContent = `Jan ${curYear}`;
 
   // This month
   const svMo = document.getElementById('sv-month');
@@ -514,7 +532,6 @@ function applySettingsForecast() {
   markDirty();
   rebuildMonths();
   populateCfg();
-}
 }
 
 function exportData() {
