@@ -268,7 +268,23 @@
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Vested Share Lots</span>
         <div style="display:flex;gap:6px">
-          <button class="btn btn-sm" onclick="document.getElementById('sh-csv-file').click()">⬆ Import CSV</button>
+          <div style="position:relative;display:inline-block">
+            <button class="btn btn-sm" onclick="document.getElementById('sh-csv-file').click()">⬆ Import CSV</button>
+            <span class="tooltip-trigger" tabindex="0">?<span class="tooltip-body">
+<strong>CSV Format</strong><br><br>
+Columns (in any order):<br>
+• <code>Date</code> — vest date (DD/MM/YYYY, YYYY-MM-DD, etc.)<br>
+• <code>Label</code> — description (optional)<br>
+• <code>Shares</code> — number of shares<br>
+• <code>Grant Price</code> — price per share at grant<br><br>
+Accepts comma, tab, or semicolon delimiters.<br>
+Column headers are matched flexibly — e.g. <code>Quantity</code>, <code>Vest Date</code>, <code>Cost Basis</code> all work.<br><br>
+<strong>Example:</strong><br>
+<code>Date,Label,Shares,Price<br>
+15/02/2020,FY20 Vest,120,157.50<br>
+12/08/2021,FY21 Vest,95,289.30</code>
+            </span></span>
+          </div>
           <button class="btn btn-sm btn-g" onclick="toggleAddLot()">+ Add Lot</button>
           <input type="file" id="sh-csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="handleShareCSV(this)">
         </div>
