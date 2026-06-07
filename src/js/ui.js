@@ -690,29 +690,30 @@ function renderShares() {
   const history = (sh.priceHistory || []);
   const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const price = sh.currentPrice || 0;
-  const cgtRate = (sh.cgtRate ?? 30) / 100;
+  const taxRates = getShareTaxRates();
   const baseCur = (S.settings && S.settings.currency) || 'GBP';
   const shCurCode = sh.currency || 'USD';
   const rate = xrate(shCurCode);
 
-  // Compute per-lot
-  let totalShares = 0, totalMarket = 0, totalCost = 0, totalGain = 0, totalCGT = 0, totalNet = 0;
+  // Compute per-lot with full tax breakdown
+  let totalShares = 0, totalMarket = 0, totalCost = 0, totalGain = 0;
+  let totalIncomeTax = 0, totalSocialCharges = 0, totalTax = 0, totalNet = 0;
   const lotRows = lots.map(lot => {
     const n = lot.shares || 0;
     const grantP = lot.grantPrice || 0;
     const market = n * price;
     const cost = n * grantP;
     const gain = market - cost;
-    const cgt = gain > 0 ? gain * cgtRate : 0;
-    const net = market - cgt;
+    const tax = computeTaxOnGain(gain);
+    const net = market - tax.total;
     totalShares += n; totalMarket += market; totalCost += cost;
-    totalGain += gain; totalCGT += cgt; totalNet += net;
-    return { lot, n, grantP, market, cost, gain, cgt, net };
+    totalGain += gain; totalIncomeTax += tax.incomeTax;
+    totalSocialCharges += tax.socialCharges; totalTax += tax.total; totalNet += net;
+    return { lot, n, grantP, market, cost, gain, tax, net };
   });
 
-  // Stats — show in both share currency and base currency
+  // Stats
   const showBase = shCurCode !== baseCur && rate !== 1;
-  const baseNote = showBase ? ` (${fmt(Math.round(totalMarket * rate))})` : '';
 
   document.getElementById('sh-sv-total').textContent = totalShares.toLocaleString();
   document.getElementById('sh-ss-total').textContent = lots.length + ' lot' + (lots.length === 1 ? '' : 's');
@@ -732,9 +733,10 @@ function renderShares() {
   const svN = document.getElementById('sh-sv-net');
   svN.textContent = fmtAs(Math.round(totalNet), shCurCode);
   svN.className = 'sv ' + (totalNet < 0 ? 'neg' : 'pos');
+  const taxDesc = `PFU ${taxRates.totalPct}% (${taxRates.incomeTaxPct}% IR + ${taxRates.socialChargesPct}% social)`;
   document.getElementById('sh-ss-net').textContent = showBase
-    ? `≈ ${fmt(Math.round(totalNet * rate))} after ${sh.cgtRate ?? 30}% CGT`
-    : `After ${sh.cgtRate ?? 30}% CGT on gains`;
+    ? `≈ ${fmt(Math.round(totalNet * rate))} · ${taxDesc}`
+    : taxDesc;
 
   // Lot table
   const table = document.getElementById('sh-lot-table');
@@ -746,13 +748,14 @@ function renderShares() {
   }
   noLots.style.display = 'none';
 
-  const sym = (CURRENCIES[shCurCode] || {}).symbol || shCurCode;
   let h = `<thead><tr>
     <th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th>
-    <th>Cost Basis</th><th>Market Value</th><th>Gain</th><th>CGT</th><th>Net Post-Sale</th><th></th>
+    <th>Cost Basis</th><th>Market Value</th><th>Gain</th>
+    <th>Income Tax (${taxRates.incomeTaxPct}%)</th><th>Social (${taxRates.socialChargesPct}%)</th>
+    <th>Net Post-Sale</th><th></th>
   </tr></thead><tbody>`;
 
-  lotRows.forEach(({ lot, n, grantP, market, cost, gain, cgt, net }) => {
+  lotRows.forEach(({ lot, n, grantP, market, cost, gain, tax, net }) => {
     h += `<tr>
       <td>${lot.date || '—'}</td>
       <td>${lot.label || '—'}</td>
@@ -761,7 +764,8 @@ function renderShares() {
       <td>${fmtAs(Math.round(cost), shCurCode)}</td>
       <td class="cp">${fmtAs(Math.round(market), shCurCode)}</td>
       <td class="${gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(gain), shCurCode)}</td>
-      <td class="cn">${cgt > 0 ? '-' + fmtAs(Math.round(cgt), shCurCode) : '—'}</td>
+      <td class="cn">${tax.incomeTax > 0 ? '-' + fmtAs(Math.round(tax.incomeTax), shCurCode) : '—'}</td>
+      <td class="cn">${tax.socialCharges > 0 ? '-' + fmtAs(Math.round(tax.socialCharges), shCurCode) : '—'}</td>
       <td style="font-weight:600">${fmtAs(Math.round(net), shCurCode)}</td>
       <td><button class="sh-del" onclick="deleteShareLot('${lot.id}')" title="Delete">✕</button></td>
     </tr>`;
@@ -774,7 +778,8 @@ function renderShares() {
     <td>${fmtAs(Math.round(totalCost), shCurCode)}</td>
     <td>${fmtAs(Math.round(totalMarket), shCurCode)}</td>
     <td>${fmtAs(Math.round(totalGain), shCurCode)}</td>
-    <td>${totalCGT > 0 ? '-' + fmtAs(Math.round(totalCGT), shCurCode) : '—'}</td>
+    <td>${totalIncomeTax > 0 ? '-' + fmtAs(Math.round(totalIncomeTax), shCurCode) : '—'}</td>
+    <td>${totalSocialCharges > 0 ? '-' + fmtAs(Math.round(totalSocialCharges), shCurCode) : '—'}</td>
     <td>${fmtAs(Math.round(totalNet), shCurCode)}${showBase ? '<br><span style="font-size:10px;color:var(--dim)">≈ ' + fmt(Math.round(totalNet * rate)) + '</span>' : ''}</td>
     <td></td>
   </tr>`;
@@ -802,9 +807,13 @@ function applySharesCfg() {
   const oldTicker = S.shares.ticker;
   S.shares.ticker = document.getElementById('sh-ticker').value.trim().toUpperCase();
   S.shares.currency = document.getElementById('sh-currency').value;
-  S.shares.cgtRate = parseFloat(document.getElementById('sh-cgt').value) || 0;
+  // Tax breakdown
+  const ir = parseFloat(document.getElementById('sh-tax-ir').value) || 0;
+  const social = parseFloat(document.getElementById('sh-tax-social').value) || 0;
+  S.shares.taxBreakdown = { incomeTax: ir, socialCharges: social };
+  S.shares.cgtRate = ir + social; // Keep for backward compat
+  document.getElementById('sh-tax-total').textContent = `= ${(ir + social).toFixed(1)}% PFU`;
   markDirty();
-  // If ticker changed, clear history and re-fetch next time
   if (oldTicker !== S.shares.ticker) {
     S.shares.priceHistory = [];
     S.shares.currentPrice = 0;
@@ -813,12 +822,14 @@ function applySharesCfg() {
   }
 }
 
-// Populate shares config fields on the Settings page
 function populateSharesSettings() {
   const sh = S.shares || {};
   document.getElementById('sh-company').value = sh.companyName || '';
   document.getElementById('sh-ticker').value = sh.ticker || '';
-  document.getElementById('sh-cgt').value = sh.cgtRate ?? 30;
+  const tb = sh.taxBreakdown || { incomeTax: 12.8, socialCharges: 18.6 };
+  document.getElementById('sh-tax-ir').value = tb.incomeTax;
+  document.getElementById('sh-tax-social').value = tb.socialCharges;
+  document.getElementById('sh-tax-total').textContent = `= ${(tb.incomeTax + tb.socialCharges).toFixed(1)}% PFU`;
   const curSel = document.getElementById('sh-currency');
   const shCur = sh.currency || 'USD';
   curSel.innerHTML = Object.entries(CURRENCIES)

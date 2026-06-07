@@ -188,23 +188,50 @@ function sharesNeedsFetch() {
   return age > 24 * 60 * 60 * 1000;
 }
 
+// ─────────────────────────────────────────────
+// FRENCH TAX CALCULATION (PFU — Prélèvement Forfaitaire Unique)
+// As of 2026: 12.8% income tax + 18.6% social charges = 31.4%
+// Applied only on positive capital gains (gain = sale price - grant price)
+// ─────────────────────────────────────────────
+function getShareTaxRates() {
+  const sh = S.shares || {};
+  const tb = sh.taxBreakdown || { incomeTax: 12.8, socialCharges: 18.6 };
+  return {
+    incomeTax: tb.incomeTax / 100,
+    socialCharges: tb.socialCharges / 100,
+    total: (tb.incomeTax + tb.socialCharges) / 100,
+    incomeTaxPct: tb.incomeTax,
+    socialChargesPct: tb.socialCharges,
+    totalPct: tb.incomeTax + tb.socialCharges
+  };
+}
+
+function computeTaxOnGain(gain) {
+  if (gain <= 0) return { incomeTax: 0, socialCharges: 0, total: 0 };
+  const r = getShareTaxRates();
+  return {
+    incomeTax: gain * r.incomeTax,
+    socialCharges: gain * r.socialCharges,
+    total: gain * r.total
+  };
+}
+
 function computePortfolioHistory() {
   const sh = S.shares || {};
   const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const history = (sh.priceHistory || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-  const cgtRate = (sh.cgtRate ?? 30) / 100;
+  const taxRates = getShareTaxRates();
   if (history.length === 0 || lots.length === 0) return { dates: [], values: [], costs: [], gains: [], nets: [] };
 
   const dates = [], values = [], costs = [], gains = [], nets = [];
   for (const hp of history) {
-    // Shares vested by this date
     const vestedLots = lots.filter(l => l.date <= hp.date);
     const totalShares = vestedLots.reduce((s, l) => s + (l.shares || 0), 0);
     const totalCost = vestedLots.reduce((s, l) => s + (l.shares || 0) * (l.grantPrice || 0), 0);
     const marketVal = totalShares * hp.price;
     const gain = marketVal - totalCost;
-    const cgt = gain > 0 ? gain * cgtRate : 0;
-    const net = marketVal - cgt;
+    const tax = gain > 0 ? gain * taxRates.total : 0;
+    const net = marketVal - tax;
     dates.push(hp.date);
     values.push(marketVal);
     costs.push(totalCost);

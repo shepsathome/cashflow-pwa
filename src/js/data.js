@@ -53,7 +53,11 @@ const DEFAULTS = {
     ticker: '',
     currentPrice: 0,
     currency: 'USD',
-    cgtRate: 30,
+    cgtRate: 31.4,
+    taxBreakdown: {
+      incomeTax: 12.8,         // Impôt sur le revenu
+      socialCharges: 18.6      // Prélèvements sociaux (CSG/CRDS/etc.)
+    },
     lots: []
   },
   income: [
