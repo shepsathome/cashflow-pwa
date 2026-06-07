@@ -165,7 +165,7 @@ function parseYahooChart(data) {
   };
 }
 
-async function fetchShareHistory(ticker, range = '5y') {
+async function fetchShareHistory(ticker, range = 'max') {
   if (!ticker) return { error: 'No ticker set', history: [] };
   const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=1d`;
   try {

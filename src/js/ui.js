@@ -893,14 +893,34 @@ function handleShareCSV(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = function (e) {
+  reader.onload = async function (e) {
     try {
       const parsed = parseShareCSV(e.target.result);
       if (parsed.length === 0) {
         alert('No valid rows found.\n\nMinimum columns: Date + Shares.\nGrant Price is optional — if omitted, it\'s looked up from cached price history.\n\nAccepts comma, tab, or semicolon delimiters.');
         return;
       }
-      const resolved = resolveGrantPrices(parsed);
+      // First pass — resolve from existing cache
+      let resolved = resolveGrantPrices(parsed);
+
+      // If any unresolved and we have a ticker, fetch full history and retry
+      if (resolved.unresolved > 0 && (S.shares || {}).ticker) {
+        const statusEl = document.getElementById('sh-auto-status');
+        if (statusEl) { statusEl.textContent = `⟳ Fetching full price history to resolve ${resolved.unresolved} missing price(s)…`; statusEl.style.color = 'var(--dim)'; }
+        const result = await fetchShareHistory(S.shares.ticker, 'max');
+        if (result.history && result.history.length > 0) {
+          if (!S.shares.priceHistory) S.shares.priceHistory = [];
+          const existing = new Map(S.shares.priceHistory.map(p => [p.date, p]));
+          for (const h of result.history) existing.set(h.date, h);
+          S.shares.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
+          if (result.currentPrice) S.shares.currentPrice = result.currentPrice;
+          markDirty();
+          if (statusEl) { statusEl.textContent = `✓ Loaded ${result.history.length} price points — resolving import…`; statusEl.style.color = 'var(--green)'; }
+          // Re-resolve with full history
+          resolved = resolveGrantPrices(parsed);
+        }
+      }
+
       _pendingImportLots = resolved.lots;
       showImportPreview(resolved);
     } catch (err) {
@@ -1283,7 +1303,7 @@ async function autoFetchShareHistory() {
     statusEl.style.color = 'var(--dim)';
   }
 
-  const result = await fetchShareHistory(sh.ticker, '5y');
+  const result = await fetchShareHistory(sh.ticker, 'max');
 
   if (result.error) {
     if (statusEl) { statusEl.textContent = '⚠ Could not fetch prices: ' + result.error; statusEl.style.color = 'var(--red)'; }
