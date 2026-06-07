@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cashflow-v2';
+const CACHE_NAME = 'cashflow-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -50,8 +50,8 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Exchange rate API — always network, no cache
-  if (url.hostname.includes('frankfurter.app')) {
+  // Exchange rate API and stock price proxy — always network, no cache
+  if (url.hostname.includes('frankfurter.app') || url.hostname.includes('allorigins.win')) {
     event.respondWith(fetch(event.request));
     return;
   }

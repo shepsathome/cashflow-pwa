@@ -195,6 +195,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .sh-table .sh-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 4px;opacity:.5}
 .sh-table .sh-del:hover{opacity:1}
 .sh-add-lot{border-bottom:1px solid var(--border);background:var(--s2);padding:0 14px;border-radius:var(--r) var(--r) 0 0}
+.sh-status{font-size:11px;color:var(--dim);padding:8px 0;min-height:20px}
 
 /* LOG TAB */
 .log-form{display:flex;flex-direction:column;gap:12px}

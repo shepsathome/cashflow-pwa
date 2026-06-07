@@ -246,7 +246,10 @@
         </div>
         <div class="sf">
           <label>Current Share Price</label>
-          <input type="number" class="si si-num" id="sh-price" step="0.01" placeholder="0.00" onchange="applySharesCfg()">
+          <div class="sf-row">
+            <input type="number" class="si si-num" id="sh-price" step="0.01" placeholder="0.00" onchange="applySharesCfg()">
+            <button class="btn btn-sm" id="sh-fetch-price-btn" onclick="doFetchSharePrice()" title="Fetch live price">⟳</button>
+          </div>
         </div>
         <div class="sf">
           <label>Share Currency</label>
@@ -257,6 +260,7 @@
           <input type="number" class="si" id="sh-cgt" style="width:80px" step="0.1" min="0" max="100" value="30" onchange="applySharesCfg()">
         </div>
       </div>
+      <div id="sh-price-status" class="sh-status"></div>
     </div>
 
     <div class="stats" id="sh-stats">
@@ -264,6 +268,30 @@
       <div class="sc"><div class="sl">Market Value</div><div class="sv pos" id="sh-sv-market">£0</div><div class="ss" id="sh-ss-market">—</div></div>
       <div class="sc"><div class="sl">Unrealised Gain</div><div class="sv" id="sh-sv-gain">£0</div><div class="ss" id="sh-ss-gain">—</div></div>
       <div class="sc"><div class="sl">Net After CGT</div><div class="sv" id="sh-sv-net">£0</div><div class="ss" id="sh-ss-net">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span id="sh-price-chart-title">Share Price History</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="si" id="sh-chart-range" style="width:100px;height:28px;font-size:11px" onchange="renderSharesCharts()">
+            <option value="90">3 Months</option>
+            <option value="180">6 Months</option>
+            <option value="365" selected>1 Year</option>
+            <option value="0">All Time</option>
+          </select>
+          <button class="btn btn-sm btn-g" id="sh-fetch-hist-btn" onclick="doFetchShareHistory()">⟳ Fetch History</button>
+        </div>
+      </div>
+      <canvas id="sh-price-chart" style="width:100%;height:220px;display:block"></canvas>
+      <div id="sh-chart-empty" class="sav-empty" style="display:none">No price history yet. Click "Fetch History" or update the share price to start tracking.</div>
+      <div id="sh-fetch-status" class="sh-status"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Portfolio Value &amp; Capital Gains Over Time</div>
+      <canvas id="sh-portfolio-chart" style="width:100%;height:240px;display:block"></canvas>
+      <div id="sh-portfolio-empty" class="sav-empty" style="display:none">Needs price history and at least one share lot.</div>
     </div>
 
     <div class="card">

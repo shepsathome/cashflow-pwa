@@ -110,6 +110,99 @@ async function fetchExchangeRates() {
   }
 }
 
+// ─────────────────────────────────────────────
+// SHARE PRICE FETCHING (Yahoo Finance via allorigins CORS proxy)
+// ─────────────────────────────────────────────
+function cacheSharePrice(date, price) {
+  if (!S.shares) return;
+  if (!S.shares.priceHistory) S.shares.priceHistory = [];
+  const existing = S.shares.priceHistory.find(p => p.date === date);
+  if (existing) {
+    existing.price = price;
+  } else {
+    S.shares.priceHistory.push({ date, price });
+    S.shares.priceHistory.sort((a, b) => a.date.localeCompare(b.date));
+  }
+}
+
+async function fetchSharePrice(ticker) {
+  if (!ticker) return { error: 'No ticker set' };
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1d&interval=1d`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+  try {
+    const resp = await fetch(proxyUrl);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const meta = data.chart?.result?.[0]?.meta;
+    if (!meta) throw new Error('No data returned for ticker');
+    const price = meta.regularMarketPrice;
+    const currency = meta.currency || 'USD';
+    return { price, currency, exchange: meta.exchangeName, name: meta.shortName || ticker };
+  } catch (err) {
+    console.warn('Share price fetch failed:', err);
+    return { error: err.message };
+  }
+}
+
+async function fetchShareHistory(ticker, range = '1y') {
+  if (!ticker) return { error: 'No ticker set', history: [] };
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=${range}&interval=1d`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+  try {
+    const resp = await fetch(proxyUrl);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const result = data.chart?.result?.[0];
+    if (!result) throw new Error('No data returned');
+    const timestamps = result.timestamp || [];
+    const closes = result.indicators?.quote?.[0]?.close || [];
+    const history = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      if (closes[i] != null) {
+        const d = new Date(timestamps[i] * 1000);
+        const dateStr = d.toISOString().slice(0, 10);
+        history.push({ date: dateStr, price: +closes[i].toFixed(2) });
+      }
+    }
+    const meta = result.meta;
+    return {
+      history,
+      currentPrice: meta?.regularMarketPrice,
+      currency: meta?.currency || 'USD',
+      name: meta?.shortName || ticker
+    };
+  } catch (err) {
+    console.warn('Share history fetch failed:', err);
+    return { error: err.message, history: [] };
+  }
+}
+
+function computePortfolioHistory() {
+  const sh = S.shares || {};
+  const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const history = (sh.priceHistory || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const cgtRate = (sh.cgtRate ?? 30) / 100;
+  if (history.length === 0 || lots.length === 0) return { dates: [], values: [], costs: [], gains: [], nets: [] };
+
+  const dates = [], values = [], costs = [], gains = [], nets = [];
+  for (const hp of history) {
+    // Shares vested by this date
+    const vestedLots = lots.filter(l => l.date <= hp.date);
+    const totalShares = vestedLots.reduce((s, l) => s + (l.shares || 0), 0);
+    const totalCost = vestedLots.reduce((s, l) => s + (l.shares || 0) * (l.grantPrice || 0), 0);
+    const marketVal = totalShares * hp.price;
+    const gain = marketVal - totalCost;
+    const cgt = gain > 0 ? gain * cgtRate : 0;
+    const net = marketVal - cgt;
+    dates.push(hp.date);
+    values.push(marketVal);
+    costs.push(totalCost);
+    gains.push(gain);
+    nets.push(net);
+  }
+  return { dates, values, costs, gains, nets };
+}
+
 function getCurrency() {
   const code = (S && S.settings && S.settings.currency) || 'GBP';
   return CURRENCIES[code] || CURRENCIES.GBP;

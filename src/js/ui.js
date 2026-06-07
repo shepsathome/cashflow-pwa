@@ -694,6 +694,19 @@ function renderShares() {
   const lotCurLabel = document.getElementById('sh-lot-cur');
   if (lotCurLabel) lotCurLabel.textContent = (CURRENCIES[shCur] || {}).symbol || shCur;
 
+  // Auto-cache today's price
+  autoCacheSharePrice();
+
+  // Show last-updated info
+  const history = (sh.priceHistory || []);
+  const statusEl = document.getElementById('sh-price-status');
+  if (history.length > 0) {
+    const latest = history[history.length - 1];
+    statusEl.textContent = `${history.length} price points cached · Latest: ${latest.date}`;
+  } else {
+    statusEl.textContent = sh.ticker ? 'No price history — click ⟳ Fetch History to load' : '';
+  }
+
   const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const price = sh.currentPrice || 0;
   const cgtRate = (sh.cgtRate ?? 30) / 100;
@@ -786,6 +799,20 @@ function renderShares() {
   </tr>`;
   h += '</tbody>';
   table.innerHTML = h;
+
+  renderSharesCharts();
+}
+
+// Auto-cache today's price into history
+function autoCacheSharePrice() {
+  const sh = S.shares || {};
+  if (!sh.currentPrice || sh.currentPrice <= 0) return;
+  const today = todayISO();
+  if (!sh.priceHistory) sh.priceHistory = [];
+  const existing = sh.priceHistory.find(p => p.date === today);
+  if (existing && existing.price === sh.currentPrice) return;
+  cacheSharePrice(today, sh.currentPrice);
+  markDirty();
 }
 
 function applySharesCfg() {
@@ -838,6 +865,264 @@ function deleteShareLot(id) {
   S.shares.lots = (S.shares.lots || []).filter(l => l.id !== id);
   markDirty();
   renderShares();
+}
+
+// ─── Share price & portfolio charts ───
+function renderSharesCharts() {
+  const sh = S.shares || {};
+  const allHistory = (sh.priceHistory || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const rangeDays = parseInt(document.getElementById('sh-chart-range').value) || 0;
+
+  // Filter by range
+  let history = allHistory;
+  if (rangeDays > 0 && allHistory.length > 0) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - rangeDays);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    history = allHistory.filter(h => h.date >= cutoffStr);
+  }
+
+  drawSharePriceChart(history, sh);
+  drawPortfolioValueChart(history, sh);
+}
+
+function drawSharePriceChart(history, sh) {
+  const cv = document.getElementById('sh-price-chart');
+  const empty = document.getElementById('sh-chart-empty');
+  if (history.length < 2) {
+    cv.style.display = 'none';
+    empty.style.display = '';
+    return;
+  }
+  cv.style.display = 'block';
+  empty.style.display = 'none';
+
+  const W = cv.parentElement.clientWidth - 44, H = 220;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 20, r: 16, b: 36, l: 80 };
+
+  const prices = history.map(h => h.price);
+  const mx = Math.max(...prices) * 1.02, mn = Math.min(...prices) * 0.98;
+  const rng = mx - mn || 1;
+  const n = history.length;
+
+  function px(i) { return pad.l + (i / Math.max(n - 1, 1)) * (W - pad.l - pad.r); }
+  function py(v) { return pad.t + (1 - (v - mn) / rng) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  const sym = (CURRENCIES[sh.currency || 'USD'] || {}).symbol || '$';
+  for (let i = 0; i <= 4; i++) {
+    const v = mn + (rng * i / 4); const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(sym + Math.round(v).toLocaleString(), pad.l - 6, yy + 4);
+  }
+
+  // Date labels
+  const labelInterval = Math.max(1, Math.floor(n / 6));
+  for (let i = 0; i < n; i += labelInterval) {
+    ctx.fillStyle = '#8b9099'; ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+    const d = history[i].date;
+    ctx.fillText(d.slice(5), px(i), H - 6);
+  }
+
+  // Area fill
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(154,117,32,.18)'); grad.addColorStop(1, 'rgba(154,117,32,.02)');
+  ctx.beginPath(); ctx.moveTo(px(0), py(prices[0]));
+  for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(prices[i]));
+  ctx.lineTo(px(n - 1), H - pad.b); ctx.lineTo(px(0), H - pad.b); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Line
+  ctx.beginPath(); ctx.strokeStyle = '#9a7520'; ctx.lineWidth = 2;
+  ctx.moveTo(px(0), py(prices[0]));
+  for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(prices[i]));
+  ctx.stroke();
+
+  // Start/end dots
+  [[0, prices[0]], [n - 1, prices[n - 1]]].forEach(([i, v]) => {
+    ctx.beginPath(); ctx.arc(px(i), py(v), 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#9a7520'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.fill(); ctx.stroke();
+  });
+
+  // Current price label
+  ctx.fillStyle = '#9a7520'; ctx.font = 'bold 12px "DM Mono",monospace'; ctx.textAlign = 'right';
+  ctx.fillText(sym + prices[n - 1].toFixed(2), W - pad.r, pad.t - 4);
+
+  // Title update
+  const titleEl = document.getElementById('sh-price-chart-title');
+  if (titleEl) {
+    const pctChange = ((prices[n - 1] - prices[0]) / prices[0] * 100).toFixed(1);
+    const arrow = pctChange >= 0 ? '↑' : '↓';
+    titleEl.textContent = `Share Price — ${sym}${prices[0].toFixed(2)} → ${sym}${prices[n - 1].toFixed(2)} (${arrow}${Math.abs(pctChange)}%)`;
+  }
+}
+
+function drawPortfolioValueChart(history, sh) {
+  const cv = document.getElementById('sh-portfolio-chart');
+  const empty = document.getElementById('sh-portfolio-empty');
+  const lots = (sh.lots || []);
+
+  if (history.length < 2 || lots.length === 0) {
+    cv.style.display = 'none';
+    empty.style.display = '';
+    return;
+  }
+  cv.style.display = 'block';
+  empty.style.display = 'none';
+
+  const pf = computePortfolioHistory();
+  if (pf.dates.length < 2) { cv.style.display = 'none'; empty.style.display = ''; return; }
+
+  // Filter to same range as price chart
+  const rangeDays = parseInt(document.getElementById('sh-chart-range').value) || 0;
+  let startIdx = 0;
+  if (rangeDays > 0) {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - rangeDays);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    startIdx = pf.dates.findIndex(d => d >= cutoffStr);
+    if (startIdx < 0) startIdx = 0;
+  }
+
+  const dates = pf.dates.slice(startIdx);
+  const values = pf.values.slice(startIdx);
+  const gains = pf.gains.slice(startIdx);
+  const nets = pf.nets.slice(startIdx);
+  const n = dates.length;
+  if (n < 2) { cv.style.display = 'none'; empty.style.display = ''; return; }
+
+  const W = cv.parentElement.clientWidth - 44, H = 240;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 24, r: 16, b: 36, l: 80 };
+
+  const allVals = [...values, ...gains, ...nets];
+  const mx = Math.max(...allVals) * 1.05, mn = Math.min(...allVals, 0);
+  const rng = mx - mn || 1;
+
+  function px(i) { return pad.l + (i / Math.max(n - 1, 1)) * (W - pad.l - pad.r); }
+  function py(v) { return pad.t + (1 - (v - mn) / rng) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  const sym = (CURRENCIES[sh.currency || 'USD'] || {}).symbol || '$';
+  for (let i = 0; i <= 4; i++) {
+    const v = mn + (rng * i / 4); const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(sym + Math.round(v).toLocaleString(), pad.l - 6, yy + 4);
+  }
+
+  // Zero line
+  if (mn < 0) {
+    ctx.strokeStyle = 'rgba(220,38,38,.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(pad.l, py(0)); ctx.lineTo(W - pad.r, py(0)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Date labels
+  const labelInterval = Math.max(1, Math.floor(n / 6));
+  for (let i = 0; i < n; i += labelInterval) {
+    ctx.fillStyle = '#8b9099'; ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(dates[i].slice(5), px(i), H - 6);
+  }
+
+  // Draw lines: market value (gold), gain (green), net after CGT (blue)
+  function drawLine(arr, color, width, dash) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width;
+    if (dash) ctx.setLineDash(dash);
+    ctx.moveTo(px(0), py(arr[0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(arr[i]));
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Area under market value
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(154,117,32,.12)'); grad.addColorStop(1, 'rgba(154,117,32,.02)');
+  ctx.beginPath(); ctx.moveTo(px(0), py(values[0]));
+  for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(values[i]));
+  ctx.lineTo(px(n - 1), H - pad.b); ctx.lineTo(px(0), H - pad.b); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  drawLine(values, '#9a7520', 2.5);
+  drawLine(gains, '#15803d', 1.5, [5, 3]);
+  drawLine(nets, '#1d4ed8', 1.5, [3, 2]);
+
+  // Legend
+  ctx.font = '11px "DM Sans",sans-serif'; ctx.textAlign = 'left';
+  let lx = pad.l;
+  ctx.fillStyle = '#9a7520'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Market Value', lx + 18, pad.t + 3); lx += 110;
+  ctx.fillStyle = '#15803d'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Unrealised Gain', lx + 18, pad.t + 3); lx += 120;
+  ctx.fillStyle = '#1d4ed8'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Net After CGT', lx + 18, pad.t + 3);
+}
+
+// ─── Fetch handlers ───
+async function doFetchSharePrice() {
+  const sh = S.shares || {};
+  if (!sh.ticker) return alert('Set a ticker symbol first.');
+  const btn = document.getElementById('sh-fetch-price-btn');
+  const status = document.getElementById('sh-price-status');
+  btn.disabled = true; btn.textContent = '…';
+  status.textContent = 'Fetching live price…';
+  status.style.color = 'var(--dim)';
+
+  const result = await fetchSharePrice(sh.ticker);
+  if (result.error) {
+    status.textContent = '⚠ ' + result.error;
+    status.style.color = 'var(--red)';
+  } else {
+    S.shares.currentPrice = result.price;
+    document.getElementById('sh-price').value = result.price;
+    cacheSharePrice(todayISO(), result.price);
+    markDirty();
+    status.textContent = `✓ ${result.name || sh.ticker}: ${(CURRENCIES[result.currency] || {}).symbol || '$'}${result.price} (${result.exchange || ''})`;
+    status.style.color = 'var(--green)';
+    renderShares();
+  }
+  btn.disabled = false; btn.textContent = '⟳';
+}
+
+async function doFetchShareHistory() {
+  const sh = S.shares || {};
+  if (!sh.ticker) return alert('Set a ticker symbol first.');
+  const btn = document.getElementById('sh-fetch-hist-btn');
+  const status = document.getElementById('sh-fetch-status');
+  btn.disabled = true; btn.textContent = '⟳ Fetching…';
+  status.textContent = 'Fetching price history from Yahoo Finance…';
+  status.style.color = 'var(--dim)';
+
+  const result = await fetchShareHistory(sh.ticker, '5y');
+  if (result.error) {
+    status.textContent = '⚠ ' + result.error;
+    status.style.color = 'var(--red)';
+  } else {
+    if (!S.shares.priceHistory) S.shares.priceHistory = [];
+    // Merge — keep newer data for overlapping dates
+    const existing = new Map(S.shares.priceHistory.map(p => [p.date, p]));
+    for (const h of result.history) {
+      existing.set(h.date, h);
+    }
+    S.shares.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
+    // Update current price
+    if (result.currentPrice) {
+      S.shares.currentPrice = result.currentPrice;
+      document.getElementById('sh-price').value = result.currentPrice;
+    }
+    markDirty();
+    status.textContent = `✓ Loaded ${result.history.length} data points (${result.history[0]?.date} → ${result.history[result.history.length - 1]?.date})`;
+    status.style.color = 'var(--green)';
+    renderShares();
+  }
+  btn.disabled = false; btn.textContent = '⟳ Fetch History';
 }
 
 // ─────────────────────────────────────────────
