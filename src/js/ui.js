@@ -738,6 +738,8 @@ function renderShares() {
     ? `≈ ${fmt(Math.round(totalNet * rate))} · ${taxDesc}`
     : taxDesc;
 
+  renderSharesCharts();
+
   // Lot table
   const table = document.getElementById('sh-lot-table');
   const noLots = document.getElementById('sh-no-lots');
@@ -785,8 +787,6 @@ function renderShares() {
   </tr>`;
   h += '</tbody>';
   table.innerHTML = h;
-
-  renderSharesCharts();
 }
 
 // Auto-cache today's price into history
