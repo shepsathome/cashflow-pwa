@@ -2,31 +2,11 @@
 // UI — Tabs, Dashboard, Forecast, Items, Savings, Modal
 // ─────────────────────────────────────────────
 
-// CONFIG
+// CONFIG — all managed from Settings page now
 function populateCfg() {
-  const mon = document.getElementById('cfg-mon');
-  mon.innerHTML = MN.map((n, i) => `<option value="${i + 1}">${n}</option>`).join('');
-  const yr = document.getElementById('cfg-yr');
-  yr.innerHTML = '';
-  for (let y = 2020; y <= 2035; y++) yr.innerHTML += `<option value="${y}">${y}</option>`;
-  const [sy, sm] = S.startMonth.split('-').map(Number);
-  mon.value = sm; yr.value = sy;
-  document.getElementById('cfg-bal').value = S.startingBalance;
-  document.getElementById('cfg-fy').value = S.forecastYears;
   document.getElementById('sav-start').value = S.savings.startValue;
   document.getElementById('sav-growth').value = S.savings.growthPct;
   updateCurrencyLabels();
-}
-
-function applyCfg() {
-  const mon = +document.getElementById('cfg-mon').value;
-  const yr = +document.getElementById('cfg-yr').value;
-  const bal = parseFloat(document.getElementById('cfg-bal').value) || 0;
-  const fy = +document.getElementById('cfg-fy').value;
-  S.startMonth = `${yr}-${String(mon).padStart(2, '0')}`;
-  S.startingBalance = bal;
-  S.forecastYears = fy;
-  markDirty(); rebuildMonths(); renderAll();
 }
 
 function applySavingsCfg() {
@@ -533,8 +513,8 @@ function applySettingsForecast() {
   S.forecastYears = fy;
   markDirty();
   rebuildMonths();
-  // Sync dashboard settings bar
   populateCfg();
+}
 }
 
 function exportData() {
