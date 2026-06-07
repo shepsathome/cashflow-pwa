@@ -267,8 +267,28 @@
     <div class="card">
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Vested Share Lots</span>
-        <button class="btn btn-sm btn-g" onclick="toggleAddLot()">+ Add Lot</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="document.getElementById('sh-csv-file').click()">⬆ Import CSV</button>
+          <button class="btn btn-sm btn-g" onclick="toggleAddLot()">+ Add Lot</button>
+          <input type="file" id="sh-csv-file" accept=".csv,.tsv,.txt" style="display:none" onchange="handleShareCSV(this)">
+        </div>
       </div>
+
+      <!-- CSV Import Preview -->
+      <div id="sh-import-preview" style="display:none">
+        <div class="sh-import-info">
+          <strong id="sh-import-count">0</strong> lots parsed from CSV.
+          <span id="sh-import-note" style="color:var(--dim)"></span>
+        </div>
+        <div class="sh-import-table-wrap">
+          <table class="sh-table" id="sh-import-table"></table>
+        </div>
+        <div style="display:flex;gap:8px;padding:12px 0">
+          <button class="btn btn-g" onclick="confirmShareImport()">✓ Import All</button>
+          <button class="btn" onclick="cancelShareImport()">Cancel</button>
+        </div>
+      </div>
+
       <div id="sh-add-lot" class="sh-add-lot" style="display:none">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;padding:12px 0">
           <div class="sf">

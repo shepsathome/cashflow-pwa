@@ -875,6 +875,143 @@ function deleteShareLot(id) {
   renderShares();
 }
 
+// ─── CSV Import for share lots ───
+let _pendingImportLots = [];
+
+function handleShareCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const parsed = parseShareCSV(e.target.result);
+      if (parsed.length === 0) {
+        alert('No valid rows found. Expected columns: date, label/description, shares/quantity, grant price.\nAccepts comma, tab, or semicolon delimiters.');
+        return;
+      }
+      _pendingImportLots = parsed;
+      showImportPreview(parsed);
+    } catch (err) {
+      alert('CSV parse error: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function parseShareCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length === 0) return [];
+
+  // Detect delimiter
+  const firstLine = lines[0];
+  const delim = firstLine.includes('\t') ? '\t' : firstLine.includes(';') ? ';' : ',';
+
+  // Parse header to find column indices
+  const header = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
+  const colMap = {};
+  header.forEach((h, i) => {
+    if (/date|vest.*date|vesting/i.test(h)) colMap.date = i;
+    else if (/label|desc|name|note|event|type/i.test(h)) colMap.label = i;
+    else if (/share|qty|quantity|units|number/i.test(h)) colMap.shares = i;
+    else if (/price|grant|cost|basis|strike/i.test(h)) colMap.price = i;
+  });
+
+  // If we couldn't map columns, try positional (date, label, shares, price)
+  const hasHeader = colMap.date !== undefined || colMap.shares !== undefined;
+  if (!hasHeader) {
+    // Assume positional: date, label, shares, price (or date, shares, price if 3 cols)
+    const cols = header.length;
+    if (cols >= 4) { colMap.date = 0; colMap.label = 1; colMap.shares = 2; colMap.price = 3; }
+    else if (cols === 3) { colMap.date = 0; colMap.shares = 1; colMap.price = 2; }
+    else return [];
+  }
+
+  const startRow = hasHeader ? 1 : 0;
+  const lots = [];
+
+  for (let i = startRow; i < lines.length; i++) {
+    const cells = lines[i].split(delim).map(c => c.trim().replace(/^['"]|['"]$/g, ''));
+    if (cells.length < 2) continue;
+
+    // Parse date — accept YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, DD-Mon-YYYY etc.
+    const rawDate = cells[colMap.date] || '';
+    const date = parseFlexDate(rawDate);
+    if (!date) continue;
+
+    const shares = parseFloat((cells[colMap.shares] || '').replace(/[^0-9.-]/g, ''));
+    const price = parseFloat((cells[colMap.price] || '').replace(/[^0-9.-]/g, ''));
+    if (!shares || shares <= 0 || !price || price <= 0) continue;
+
+    const label = colMap.label !== undefined ? (cells[colMap.label] || '') : '';
+
+    lots.push({
+      id: 'lot_imp_' + Date.now() + '_' + i,
+      date,
+      label: label || ('Import ' + date),
+      shares: Math.round(shares),
+      grantPrice: +price.toFixed(2)
+    });
+  }
+
+  return lots.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function parseFlexDate(raw) {
+  if (!raw) return null;
+  // YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  // DD/MM/YYYY or DD-MM-YYYY
+  let m = raw.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$/);
+  if (m) {
+    const d = +m[1], mo = +m[2], y = +m[3];
+    // If first number > 12, it's DD/MM/YYYY; otherwise assume DD/MM/YYYY for UK
+    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  // DD-Mon-YYYY or DD Mon YYYY
+  m = raw.match(/^(\d{1,2})[\s\-.]?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*[\s\-.]?(\d{4})$/i);
+  if (m) {
+    const d = +m[1], mo = MN.findIndex(n => n.toLowerCase() === m[2].slice(0, 3).toLowerCase()) + 1, y = +m[3];
+    if (mo > 0) return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  // Try native Date parse as last resort
+  const parsed = new Date(raw);
+  if (!isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);
+  return null;
+}
+
+function showImportPreview(lots) {
+  const sh = S.shares || {};
+  const sym = (CURRENCIES[sh.currency || 'USD'] || {}).symbol || '$';
+  document.getElementById('sh-import-count').textContent = lots.length;
+  const totalShares = lots.reduce((s, l) => s + l.shares, 0);
+  document.getElementById('sh-import-note').textContent = `(${totalShares.toLocaleString()} total shares)`;
+
+  let h = '<thead><tr><th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th></tr></thead><tbody>';
+  lots.forEach(l => {
+    h += `<tr><td>${l.date}</td><td>${l.label}</td><td>${l.shares.toLocaleString()}</td><td>${sym}${l.grantPrice.toFixed(2)}</td></tr>`;
+  });
+  h += '</tbody>';
+  document.getElementById('sh-import-table').innerHTML = h;
+  document.getElementById('sh-import-preview').style.display = '';
+}
+
+function confirmShareImport() {
+  if (!_pendingImportLots.length) return;
+  if (!S.shares) S.shares = deep(DEFAULTS.shares);
+  if (!S.shares.lots) S.shares.lots = [];
+  S.shares.lots.push(..._pendingImportLots);
+  markDirty();
+  _pendingImportLots = [];
+  document.getElementById('sh-import-preview').style.display = 'none';
+  renderShares();
+}
+
+function cancelShareImport() {
+  _pendingImportLots = [];
+  document.getElementById('sh-import-preview').style.display = 'none';
+}
+
 // ─── Share price & portfolio charts ───
 function renderSharesCharts() {
   const sh = S.shares || {};
