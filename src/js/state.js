@@ -14,6 +14,7 @@ function load() {
       if (!S.settings) S.settings = deep(DEFAULTS.settings);
       if (!S.settings.exchangeRates) S.settings.exchangeRates = {};
       if (!S.transactions) S.transactions = [];
+      if (!S.shares) S.shares = deep(DEFAULTS.shares);
       return;
     }
   } catch (e) {}

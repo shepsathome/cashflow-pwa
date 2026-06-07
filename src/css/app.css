@@ -183,6 +183,19 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 /* Item row — frequency badge */
 .ifreq{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--blue);background:rgba(29,78,216,.08);padding:1px 6px;border-radius:3px;border:1px solid rgba(29,78,216,.2);flex-shrink:0}
 
+/* SHARES TAB */
+.sh-table{width:100%;border-collapse:collapse}
+.sh-table th{text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:8px 14px;border-bottom:2px solid var(--border)}
+.sh-table th:first-child,.sh-table th:nth-child(2){text-align:left}
+.sh-table td{text-align:right;font-family:'DM Mono',monospace;font-size:13px;padding:9px 14px;border-bottom:1px solid var(--border)}
+.sh-table td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--dim)}
+.sh-table td:nth-child(2){text-align:left;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text)}
+.sh-table tr:last-child td{border-bottom:none;background:var(--gold-bg);font-weight:700}
+.sh-table tr:last-child td:first-child,.sh-table tr:last-child td:nth-child(2){color:var(--gold)}
+.sh-table .sh-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 4px;opacity:.5}
+.sh-table .sh-del:hover{opacity:1}
+.sh-add-lot{border-bottom:1px solid var(--border);background:var(--s2);padding:0 14px;border-radius:var(--r) var(--r) 0 0}
+
 /* LOG TAB */
 .log-form{display:flex;flex-direction:column;gap:12px}
 .log-form-row{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}

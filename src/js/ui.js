@@ -26,6 +26,7 @@ function showTab(name, el) {
   if (name === 'forecast') renderForecast();
   if (name === 'savings') renderSavings();
   if (name === 'recurring') renderItems();
+  if (name === 'shares') renderShares();
   if (name === 'settings') renderSettings();
 }
 
@@ -475,6 +476,7 @@ function renderAll() {
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
   if (document.getElementById('tab-recurring').classList.contains('on')) renderItems();
+  if (document.getElementById('tab-shares').classList.contains('on')) renderShares();
   if (document.getElementById('tab-settings').classList.contains('on')) renderSettings();
 }
 
@@ -668,6 +670,174 @@ async function doFetchRates() {
 
   btn.disabled = false;
   btn.textContent = '⟳ Fetch Live Rates';
+}
+
+// ─────────────────────────────────────────────
+// SHARES TAB
+// ─────────────────────────────────────────────
+function renderShares() {
+  const sh = S.shares || {};
+  // Populate config fields
+  document.getElementById('sh-company').value = sh.companyName || '';
+  document.getElementById('sh-ticker').value = sh.ticker || '';
+  document.getElementById('sh-price').value = sh.currentPrice || '';
+  document.getElementById('sh-cgt').value = sh.cgtRate ?? 30;
+
+  // Currency dropdown
+  const curSel = document.getElementById('sh-currency');
+  const shCur = sh.currency || 'USD';
+  curSel.innerHTML = Object.entries(CURRENCIES)
+    .map(([code, c]) => `<option value="${code}" ${code === shCur ? 'selected' : ''}>${code}</option>`)
+    .join('');
+
+  // Update lot form currency label
+  const lotCurLabel = document.getElementById('sh-lot-cur');
+  if (lotCurLabel) lotCurLabel.textContent = (CURRENCIES[shCur] || {}).symbol || shCur;
+
+  const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const price = sh.currentPrice || 0;
+  const cgtRate = (sh.cgtRate ?? 30) / 100;
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const shCurCode = sh.currency || 'USD';
+  const rate = xrate(shCurCode);
+
+  // Compute per-lot
+  let totalShares = 0, totalMarket = 0, totalCost = 0, totalGain = 0, totalCGT = 0, totalNet = 0;
+  const lotRows = lots.map(lot => {
+    const n = lot.shares || 0;
+    const grantP = lot.grantPrice || 0;
+    const market = n * price;
+    const cost = n * grantP;
+    const gain = market - cost;
+    const cgt = gain > 0 ? gain * cgtRate : 0;
+    const net = market - cgt;
+    totalShares += n; totalMarket += market; totalCost += cost;
+    totalGain += gain; totalCGT += cgt; totalNet += net;
+    return { lot, n, grantP, market, cost, gain, cgt, net };
+  });
+
+  // Stats — show in both share currency and base currency
+  const showBase = shCurCode !== baseCur && rate !== 1;
+  const baseNote = showBase ? ` (${fmt(Math.round(totalMarket * rate))})` : '';
+
+  document.getElementById('sh-sv-total').textContent = totalShares.toLocaleString();
+  document.getElementById('sh-ss-total').textContent = lots.length + ' lot' + (lots.length === 1 ? '' : 's');
+
+  const svM = document.getElementById('sh-sv-market');
+  svM.textContent = fmtAs(Math.round(totalMarket), shCurCode);
+  svM.className = 'sv pos';
+  document.getElementById('sh-ss-market').textContent = showBase ? `≈ ${fmt(Math.round(totalMarket * rate))}` : `@ ${fmtAs(price, shCurCode)}/share`;
+
+  const svG = document.getElementById('sh-sv-gain');
+  svG.textContent = fmtAs(Math.round(totalGain), shCurCode);
+  svG.className = 'sv ' + (totalGain < 0 ? 'neg' : 'pos');
+  document.getElementById('sh-ss-gain').textContent = totalCost > 0
+    ? `${(totalGain / totalCost * 100).toFixed(1)}% return`
+    : '—';
+
+  const svN = document.getElementById('sh-sv-net');
+  svN.textContent = fmtAs(Math.round(totalNet), shCurCode);
+  svN.className = 'sv ' + (totalNet < 0 ? 'neg' : 'pos');
+  document.getElementById('sh-ss-net').textContent = showBase
+    ? `≈ ${fmt(Math.round(totalNet * rate))} after ${sh.cgtRate ?? 30}% CGT`
+    : `After ${sh.cgtRate ?? 30}% CGT on gains`;
+
+  // Lot table
+  const table = document.getElementById('sh-lot-table');
+  const noLots = document.getElementById('sh-no-lots');
+  if (lots.length === 0) {
+    table.innerHTML = '';
+    noLots.style.display = '';
+    return;
+  }
+  noLots.style.display = 'none';
+
+  const sym = (CURRENCIES[shCurCode] || {}).symbol || shCurCode;
+  let h = `<thead><tr>
+    <th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th>
+    <th>Cost Basis</th><th>Market Value</th><th>Gain</th><th>CGT</th><th>Net Post-Sale</th><th></th>
+  </tr></thead><tbody>`;
+
+  lotRows.forEach(({ lot, n, grantP, market, cost, gain, cgt, net }) => {
+    h += `<tr>
+      <td>${lot.date || '—'}</td>
+      <td>${lot.label || '—'}</td>
+      <td>${n.toLocaleString()}</td>
+      <td>${fmtAs(grantP, shCurCode)}</td>
+      <td>${fmtAs(Math.round(cost), shCurCode)}</td>
+      <td class="cp">${fmtAs(Math.round(market), shCurCode)}</td>
+      <td class="${gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(gain), shCurCode)}</td>
+      <td class="cn">${cgt > 0 ? '-' + fmtAs(Math.round(cgt), shCurCode) : '—'}</td>
+      <td style="font-weight:600">${fmtAs(Math.round(net), shCurCode)}</td>
+      <td><button class="sh-del" onclick="deleteShareLot('${lot.id}')" title="Delete">✕</button></td>
+    </tr>`;
+  });
+
+  // Totals row
+  h += `<tr>
+    <td>Total</td><td>${lots.length} lot${lots.length === 1 ? '' : 's'}</td>
+    <td>${totalShares.toLocaleString()}</td><td>—</td>
+    <td>${fmtAs(Math.round(totalCost), shCurCode)}</td>
+    <td>${fmtAs(Math.round(totalMarket), shCurCode)}</td>
+    <td>${fmtAs(Math.round(totalGain), shCurCode)}</td>
+    <td>${totalCGT > 0 ? '-' + fmtAs(Math.round(totalCGT), shCurCode) : '—'}</td>
+    <td>${fmtAs(Math.round(totalNet), shCurCode)}${showBase ? '<br><span style="font-size:10px;color:var(--dim)">≈ ' + fmt(Math.round(totalNet * rate)) + '</span>' : ''}</td>
+    <td></td>
+  </tr>`;
+  h += '</tbody>';
+  table.innerHTML = h;
+}
+
+function applySharesCfg() {
+  if (!S.shares) S.shares = deep(DEFAULTS.shares);
+  S.shares.companyName = document.getElementById('sh-company').value.trim();
+  S.shares.ticker = document.getElementById('sh-ticker').value.trim().toUpperCase();
+  S.shares.currentPrice = parseFloat(document.getElementById('sh-price').value) || 0;
+  S.shares.currency = document.getElementById('sh-currency').value;
+  S.shares.cgtRate = parseFloat(document.getElementById('sh-cgt').value) || 0;
+  markDirty();
+  renderShares();
+}
+
+function toggleAddLot() {
+  const el = document.getElementById('sh-add-lot');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+  if (el.style.display !== 'none') {
+    document.getElementById('sh-lot-date').value = todayISO();
+    document.getElementById('sh-lot-cur').textContent = (CURRENCIES[(S.shares || {}).currency || 'USD'] || {}).symbol || '$';
+  }
+}
+
+function addShareLot() {
+  const date = document.getElementById('sh-lot-date').value;
+  const label = document.getElementById('sh-lot-label').value.trim();
+  const shares = parseInt(document.getElementById('sh-lot-shares').value) || 0;
+  const grantPrice = parseFloat(document.getElementById('sh-lot-price').value) || 0;
+  if (!date) return alert('Please select a vest date.');
+  if (shares <= 0) return alert('Please enter the number of shares.');
+  if (grantPrice <= 0) return alert('Please enter the grant price per share.');
+  if (!S.shares) S.shares = deep(DEFAULTS.shares);
+  if (!S.shares.lots) S.shares.lots = [];
+  S.shares.lots.push({
+    id: 'lot_' + Date.now(),
+    date,
+    label: label || ('Vest ' + date),
+    shares,
+    grantPrice
+  });
+  markDirty();
+  // Clear form
+  document.getElementById('sh-lot-label').value = '';
+  document.getElementById('sh-lot-shares').value = '';
+  document.getElementById('sh-lot-price').value = '';
+  renderShares();
+}
+
+function deleteShareLot(id) {
+  if (!confirm('Delete this share lot?')) return;
+  S.shares.lots = (S.shares.lots || []).filter(l => l.id !== id);
+  markDirty();
+  renderShares();
 }
 
 // ─────────────────────────────────────────────

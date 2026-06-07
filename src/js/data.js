@@ -48,6 +48,14 @@ const DEFAULTS = {
     ratesLastUpdated: null   // ISO timestamp of last fetch
   },
   savings: { startValue: 8000, growthPct: 4.5 },
+  shares: {
+    companyName: '',
+    ticker: '',
+    currentPrice: 0,
+    currency: 'USD',
+    cgtRate: 30,
+    lots: []
+  },
   income: [
     { id: 'salary_1', name: 'Salary — Partner 1', category: 'Salaries', base: 3500, overrides: {} },
     { id: 'salary_2', name: 'Salary — Partner 2', category: 'Salaries', base: 2800, overrides: {} },
