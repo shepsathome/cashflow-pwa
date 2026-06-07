@@ -889,21 +889,17 @@ function renderSharesCharts() {
 function drawSharePriceChart(history, sh) {
   const cv = document.getElementById('sh-price-chart');
   const empty = document.getElementById('sh-chart-empty');
+
   if (history.length < 2) {
-    cv.style.display = 'none';
+    cv.width = 0; cv.height = 0;
     empty.style.display = '';
     return;
   }
-  cv.style.display = 'block';
   empty.style.display = 'none';
 
-  // Defer to next frame so layout is complete after display:block
-  requestAnimationFrame(() => _drawSharePriceChartInner(cv, history, sh));
-}
-
-function _drawSharePriceChartInner(cv, history, sh) {
   const W = cv.parentElement.clientWidth - 44, H = 220;
   if (W < 100) return;
+  cv.width = W; cv.height = H;
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   const pad = { t: 20, r: 16, b: 36, l: 80 };
@@ -976,20 +972,14 @@ function drawPortfolioValueChart(history, sh) {
   const lots = (sh.lots || []);
 
   if (history.length < 2 || lots.length === 0) {
-    cv.style.display = 'none';
+    cv.width = 0; cv.height = 0;
     empty.style.display = '';
     return;
   }
-  cv.style.display = 'block';
   empty.style.display = 'none';
 
-  requestAnimationFrame(() => _drawPortfolioValueChartInner(cv, sh));
-}
-
-function _drawPortfolioValueChartInner(cv, sh) {
-  const empty = document.getElementById('sh-portfolio-empty');
   const pf = computePortfolioHistory();
-  if (pf.dates.length < 2) { cv.style.display = 'none'; empty.style.display = ''; return; }
+  if (pf.dates.length < 2) { cv.width = 0; cv.height = 0; empty.style.display = ''; return; }
 
   // Filter to same range as price chart
   const rangeDays = parseInt(document.getElementById('sh-chart-range').value) || 0;
@@ -1006,7 +996,7 @@ function _drawPortfolioValueChartInner(cv, sh) {
   const gains = pf.gains.slice(startIdx);
   const nets = pf.nets.slice(startIdx);
   const n = dates.length;
-  if (n < 2) { cv.style.display = 'none'; empty.style.display = ''; return; }
+  if (n < 2) { cv.width = 0; cv.height = 0; empty.style.display = ''; return; }
 
   const W = cv.parentElement.clientWidth - 44, H = 240;
   if (W < 100) return;
