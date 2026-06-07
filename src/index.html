@@ -272,14 +272,19 @@
             <button class="btn btn-sm" onclick="document.getElementById('sh-csv-file').click()">⬆ Import CSV</button>
             <span class="tooltip-trigger" tabindex="0">?<span class="tooltip-body">
 <strong>CSV Format</strong><br><br>
-Columns (in any order):<br>
+Minimum columns:<br>
 • <code>Date</code> — vest date (DD/MM/YYYY, YYYY-MM-DD, etc.)<br>
-• <code>Label</code> — description (optional)<br>
-• <code>Shares</code> — number of shares<br>
+• <code>Shares</code> — number of shares<br><br>
+Optional columns:<br>
+• <code>Label</code> — description (e.g. FY25 Vest)<br>
 • <code>Grant Price</code> — price per share at grant<br><br>
-Accepts comma, tab, or semicolon delimiters.<br>
-Column headers are matched flexibly — e.g. <code>Quantity</code>, <code>Vest Date</code>, <code>Cost Basis</code> all work.<br><br>
-<strong>Example:</strong><br>
+<strong>If Grant Price is omitted</strong>, the app looks it up automatically from cached price history (fetched via the ticker in Settings).<br><br>
+Accepts comma, tab, or semicolon delimiters.<br><br>
+<strong>Simplest example:</strong><br>
+<code>Date,Shares<br>
+15/02/2020,120<br>
+12/08/2021,95</code><br><br>
+<strong>Full example:</strong><br>
 <code>Date,Label,Shares,Price<br>
 15/02/2020,FY20 Vest,120,157.50<br>
 12/08/2021,FY21 Vest,95,289.30</code>

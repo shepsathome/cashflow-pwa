@@ -897,11 +897,12 @@ function handleShareCSV(input) {
     try {
       const parsed = parseShareCSV(e.target.result);
       if (parsed.length === 0) {
-        alert('No valid rows found. Expected columns: date, label/description, shares/quantity, grant price.\nAccepts comma, tab, or semicolon delimiters.');
+        alert('No valid rows found.\n\nMinimum columns: Date + Shares.\nGrant Price is optional — if omitted, it\'s looked up from cached price history.\n\nAccepts comma, tab, or semicolon delimiters.');
         return;
       }
-      _pendingImportLots = parsed;
-      showImportPreview(parsed);
+      const resolved = resolveGrantPrices(parsed);
+      _pendingImportLots = resolved.lots;
+      showImportPreview(resolved);
     } catch (err) {
       alert('CSV parse error: ' + err.message);
     }
@@ -914,11 +915,9 @@ function parseShareCSV(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim());
   if (lines.length === 0) return [];
 
-  // Detect delimiter
   const firstLine = lines[0];
   const delim = firstLine.includes('\t') ? '\t' : firstLine.includes(';') ? ';' : ',';
 
-  // Parse header to find column indices
   const header = lines[0].split(delim).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
   const colMap = {};
   header.forEach((h, i) => {
@@ -928,13 +927,12 @@ function parseShareCSV(text) {
     else if (/price|grant|cost|basis|strike/i.test(h)) colMap.price = i;
   });
 
-  // If we couldn't map columns, try positional (date, label, shares, price)
   const hasHeader = colMap.date !== undefined || colMap.shares !== undefined;
   if (!hasHeader) {
-    // Assume positional: date, label, shares, price (or date, shares, price if 3 cols)
     const cols = header.length;
     if (cols >= 4) { colMap.date = 0; colMap.label = 1; colMap.shares = 2; colMap.price = 3; }
-    else if (cols === 3) { colMap.date = 0; colMap.shares = 1; colMap.price = 2; }
+    else if (cols === 3) { colMap.date = 0; colMap.label = 1; colMap.shares = 2; }
+    else if (cols === 2) { colMap.date = 0; colMap.shares = 1; }
     else return [];
   }
 
@@ -945,23 +943,24 @@ function parseShareCSV(text) {
     const cells = lines[i].split(delim).map(c => c.trim().replace(/^['"]|['"]$/g, ''));
     if (cells.length < 2) continue;
 
-    // Parse date — accept YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, DD-Mon-YYYY etc.
     const rawDate = cells[colMap.date] || '';
     const date = parseFlexDate(rawDate);
     if (!date) continue;
 
     const shares = parseFloat((cells[colMap.shares] || '').replace(/[^0-9.-]/g, ''));
-    const price = parseFloat((cells[colMap.price] || '').replace(/[^0-9.-]/g, ''));
-    if (!shares || shares <= 0 || !price || price <= 0) continue;
+    if (!shares || shares <= 0) continue;
+
+    const rawPrice = colMap.price !== undefined ? (cells[colMap.price] || '').replace(/[^0-9.-]/g, '') : '';
+    const price = rawPrice ? parseFloat(rawPrice) : null;
 
     const label = colMap.label !== undefined ? (cells[colMap.label] || '') : '';
 
     lots.push({
       id: 'lot_imp_' + Date.now() + '_' + i,
       date,
-      label: label || ('Import ' + date),
+      label: label || ('Vest ' + date),
       shares: Math.round(shares),
-      grantPrice: +price.toFixed(2)
+      grantPrice: (price && price > 0) ? +price.toFixed(2) : null
     });
   }
 
@@ -991,16 +990,66 @@ function parseFlexDate(raw) {
   return null;
 }
 
-function showImportPreview(lots) {
+function resolveGrantPrices(lots) {
+  const history = ((S.shares || {}).priceHistory || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  let resolved = 0, unresolved = 0;
+
+  const result = lots.map(lot => {
+    if (lot.grantPrice !== null) return lot;
+    const price = lookupHistoricalPrice(lot.date, history);
+    if (price !== null) {
+      resolved++;
+      return { ...lot, grantPrice: price, _priceSource: 'history' };
+    }
+    unresolved++;
+    return { ...lot, grantPrice: 0, _priceSource: 'missing' };
+  });
+
+  return { lots: result, resolved, unresolved, total: lots.length };
+}
+
+function lookupHistoricalPrice(date, sortedHistory) {
+  if (!sortedHistory || sortedHistory.length === 0) return null;
+  const exact = sortedHistory.find(h => h.date === date);
+  if (exact) return exact.price;
+  // Nearest prior date
+  let nearest = null;
+  for (const h of sortedHistory) {
+    if (h.date <= date) nearest = h;
+    else break;
+  }
+  if (!nearest) {
+    // Try nearest future date within 7 days
+    const first = sortedHistory.find(h => h.date > date);
+    if (first) {
+      const diff = (new Date(first.date) - new Date(date)) / (1000 * 60 * 60 * 24);
+      if (diff <= 7) return first.price;
+    }
+    return null;
+  }
+  return nearest.price;
+}
+
+function showImportPreview({ lots, resolved, unresolved, total }) {
   const sh = S.shares || {};
   const sym = (CURRENCIES[sh.currency || 'USD'] || {}).symbol || '$';
   document.getElementById('sh-import-count').textContent = lots.length;
   const totalShares = lots.reduce((s, l) => s + l.shares, 0);
-  document.getElementById('sh-import-note').textContent = `(${totalShares.toLocaleString()} total shares)`;
+  let note = `${totalShares.toLocaleString()} total shares`;
+  if (resolved > 0) note += ` · ${resolved} price${resolved === 1 ? '' : 's'} looked up from history`;
+  if (unresolved > 0) note += ` · ⚠ ${unresolved} could not be resolved`;
+  document.getElementById('sh-import-note').textContent = note;
 
-  let h = '<thead><tr><th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th></tr></thead><tbody>';
+  let h = '<thead><tr><th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th><th>Source</th></tr></thead><tbody>';
   lots.forEach(l => {
-    h += `<tr><td>${l.date}</td><td>${l.label}</td><td>${l.shares.toLocaleString()}</td><td>${sym}${l.grantPrice.toFixed(2)}</td></tr>`;
+    const priceClass = l._priceSource === 'missing' ? 'cn' : (l._priceSource === 'history' ? 'cg' : '');
+    const sourceLabel = l._priceSource === 'history' ? '📈 history' : (l._priceSource === 'missing' ? '⚠ not found' : 'CSV');
+    h += `<tr>
+      <td>${l.date}</td><td>${l.label}</td>
+      <td>${l.shares.toLocaleString()}</td>
+      <td class="${priceClass}">${l.grantPrice > 0 ? sym + l.grantPrice.toFixed(2) : '—'}</td>
+      <td style="font-size:11px;color:var(--dim)">${sourceLabel}</td>
+    </tr>`;
   });
   h += '</tbody>';
   document.getElementById('sh-import-table').innerHTML = h;
