@@ -161,6 +161,21 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .smt tr:last-child td{background:var(--gold-bg);font-weight:700;border-top:2px solid #c8a84b}
 .smt tr:last-child td:first-child{color:var(--gold);background:var(--gold-bg)}
 
+/* SPENDING BREAKDOWN */
+.spend-layout{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.spend-chart-wrap{position:relative;width:260px;height:260px;flex-shrink:0}
+.spend-chart-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
+.spend-chart-center .spend-total{font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--text)}
+.spend-chart-center .spend-label{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+.spend-list{flex:1;min-width:240px}
+.spend-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.spend-row:last-child{border-bottom:none}
+.spend-swatch{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.spend-cat{flex:1;font-size:13px;font-weight:500}
+.spend-amt{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--text);min-width:70px;text-align:right}
+.spend-pct{font-size:11px;color:var(--dim);min-width:42px;text-align:right}
+@media(max-width:600px){.spend-layout{flex-direction:column;align-items:center}.spend-chart-wrap{width:200px;height:200px}}
+
 /* NET WORTH BANNER */
 .nw-banner{background:linear-gradient(135deg,#1a2035 0%,#2a3350 100%);border-radius:var(--r);padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,.15)}
 .nw-main{flex-shrink:0}

@@ -147,6 +147,7 @@ function renderDash() {
     updatedEl.textContent = '';
   }
 
+  renderSpendingBreakdown();
   drawChart(d);
   renderAnnual(d);
 }
@@ -189,6 +190,107 @@ function renderAnnual(d) {
   h += `<tr><td>Year-End Balance</td>${yEnd.map(v => `<td style="color:${v < 0 ? 'var(--red)' : 'var(--gold)'};">${fmt(Math.round(v))}</td>`).join('')}</tr>`;
   h += '</tbody>';
   document.getElementById('at').innerHTML = h;
+}
+
+// ─────────────────────────────────────────────
+// SPENDING BREAKDOWN (donut chart + ranked list)
+// ─────────────────────────────────────────────
+const SPEND_COLORS = [
+  '#9a7520','#1d4ed8','#dc2626','#15803d','#d97706','#7c3aed',
+  '#0891b2','#be185d','#4d7c0f','#b45309','#6366f1','#059669',
+  '#e11d48','#0284c7','#a16207','#7c2d12'
+];
+
+function renderSpendingBreakdown() {
+  const curMonth = todayYYYYMM();
+  const emptyEl = document.getElementById('spend-empty');
+  const listEl = document.getElementById('spend-list');
+  const titleEl = document.getElementById('spend-title');
+  const centerEl = document.getElementById('spend-center');
+  const cv = document.getElementById('spend-chart');
+
+  // Gather outgoing amounts for the current month by category
+  // Use logged transactions if any exist for this month, otherwise use recurring projections
+  const txThisMonth = (S.transactions || []).filter(t => t.type === 'outgoing' && t.date.startsWith(curMonth));
+  const useActuals = txThisMonth.length > 0;
+
+  const catTotals = {};
+
+  if (useActuals) {
+    // Group transactions by category
+    for (const tx of txThisMonth) {
+      const cat = tx.category || 'Uncategorised';
+      catTotals[cat] = (catTotals[cat] || 0) + (tx.amount || 0);
+    }
+    titleEl.textContent = `Where Am I Spending — ${mLabel(curMonth)} (Actuals)`;
+  } else {
+    // Use recurring outgoings projected for current month
+    for (const item of S.outgoings) {
+      const cat = item.category || 'Uncategorised';
+      const a = amt(item, curMonth);
+      if (a > 0) catTotals[cat] = (catTotals[cat] || 0) + a;
+    }
+    titleEl.textContent = `Where Am I Spending — ${mLabel(curMonth)} (Budget)`;
+  }
+
+  // Sort by amount descending
+  const cats = Object.entries(catTotals)
+    .map(([cat, total]) => ({ cat, total }))
+    .filter(c => c.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  if (cats.length === 0) {
+    cv.width = 0; cv.height = 0;
+    centerEl.innerHTML = '';
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  const grandTotal = cats.reduce((s, c) => s + c.total, 0);
+
+  // Draw donut chart
+  const size = cv.parentElement.clientWidth || 260;
+  cv.width = size; cv.height = size;
+  const ctx = cv.getContext('2d');
+  const cx = size / 2, cy = size / 2;
+  const outerR = size / 2 - 4;
+  const innerR = outerR * 0.58;
+
+  ctx.clearRect(0, 0, size, size);
+
+  let startAngle = -Math.PI / 2;
+  cats.forEach((c, i) => {
+    const slice = (c.total / grandTotal) * Math.PI * 2;
+    const color = SPEND_COLORS[i % SPEND_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(cx, cy, outerR, startAngle, startAngle + slice);
+    ctx.arc(cx, cy, innerR, startAngle + slice, startAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    // Subtle gap between slices
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    startAngle += slice;
+  });
+
+  // Center label
+  centerEl.innerHTML = `<div class="spend-total">${fmt(Math.round(grandTotal))}</div><div class="spend-label">${useActuals ? 'spent' : 'projected'} / mo</div>`;
+
+  // Ranked list
+  listEl.innerHTML = cats.map((c, i) => {
+    const pct = ((c.total / grandTotal) * 100).toFixed(1);
+    const color = SPEND_COLORS[i % SPEND_COLORS.length];
+    return `<div class="spend-row">
+      <div class="spend-swatch" style="background:${color}"></div>
+      <div class="spend-cat">${c.cat}</div>
+      <div class="spend-amt">${fmt(Math.round(c.total))}</div>
+      <div class="spend-pct">${pct}%</div>
+    </div>`;
+  }).join('');
 }
 
 // SAVINGS
