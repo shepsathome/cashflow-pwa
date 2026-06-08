@@ -1218,6 +1218,11 @@ function renderShares() {
   } else if (_selectedPfId === 'all') {
     const combined = computeCombinedPortfolioSummary(portfolios);
     html += renderCombinedStats(combined);
+    html += `<div class="card" style="margin-bottom:16px">
+      <div class="card-title">Combined Portfolio Value Over Time</div>
+      <canvas id="sh-combined-chart"></canvas>
+      <div id="sh-combined-chart-empty" style="display:none;color:var(--dim);padding:8px 0;font-style:italic">Need price history and lots in at least one portfolio.</div>
+    </div>`;
     html += renderCombinedLotsTable(combined);
   } else {
     const pf = getPortfolioById(_selectedPfId);
@@ -1230,7 +1235,9 @@ function renderShares() {
 
   viewEl.innerHTML = html;
 
-  if (_selectedPfId !== 'all') {
+  if (_selectedPfId === 'all') {
+    requestAnimationFrame(() => drawCombinedValueChart());
+  } else {
     requestAnimationFrame(() => renderSharesCharts());
   }
 }
@@ -1292,6 +1299,120 @@ function renderSharesCharts() {
   const portfolioHistory = filterPortfolioHistoryByRange(computePortfolioHistory(pf), _sharesChartRange);
   if (document.getElementById('sh-price-chart')) drawSharePriceChart(priceHistory, pf);
   if (document.getElementById('sh-value-chart')) drawPortfolioValueChart(portfolioHistory, pf);
+}
+
+function drawCombinedValueChart() {
+  const cv = document.getElementById('sh-combined-chart');
+  const emptyEl = document.getElementById('sh-combined-chart-empty');
+  if (!cv) return;
+
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const portfolios = (S.portfolios || []).filter(pf => (pf.lots || []).length > 0 && (pf.priceHistory || []).length > 0);
+  if (portfolios.length === 0) {
+    cv.width = 0; cv.height = 0;
+    if (emptyEl) emptyEl.style.display = '';
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  // Compute per-portfolio histories and merge onto a common date axis
+  const pfHistories = portfolios.map(pf => {
+    const h = computePortfolioHistory(pf);
+    const rate = xrate(pf.currency || baseCur);
+    return { dates: h.dates, values: h.values.map(v => v * rate), gains: h.gains.map(v => v * rate), nets: h.nets.map(v => v * rate) };
+  });
+
+  // Collect all unique dates
+  const allDates = [...new Set(pfHistories.flatMap(h => h.dates))].sort();
+
+  // Filter by range
+  const cutoff = getShareRangeCutoff(allDates[allDates.length - 1], _sharesChartRange);
+  const dates = cutoff ? allDates.filter(d => d >= cutoff) : allDates;
+  if (dates.length < 2) { cv.width = 0; cv.height = 0; if (emptyEl) emptyEl.style.display = ''; return; }
+
+  // Sum values across portfolios for each date
+  const values = [], gains = [], nets = [];
+  for (const date of dates) {
+    let v = 0, g = 0, n = 0;
+    for (const pfh of pfHistories) {
+      const idx = pfh.dates.lastIndexOf(date);
+      if (idx >= 0) { v += pfh.values[idx]; g += pfh.gains[idx]; n += pfh.nets[idx]; }
+      else {
+        // Use nearest prior date
+        let last = -1;
+        for (let i = pfh.dates.length - 1; i >= 0; i--) { if (pfh.dates[i] <= date) { last = i; break; } }
+        if (last >= 0) { v += pfh.values[last]; g += pfh.gains[last]; n += pfh.nets[last]; }
+      }
+    }
+    values.push(v); gains.push(g); nets.push(n);
+  }
+
+  const n2 = dates.length;
+  const W = Math.max(280, (cv.parentElement?.clientWidth || 320) - 32), H = 260;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 24, r: 16, b: 36, l: 90 };
+
+  const allVals = [...values, ...gains, ...nets];
+  let mx = Math.max(...allVals) * 1.05, mn = Math.min(...allVals, 0);
+  const rng = mx - mn || 1;
+
+  function px(i) { return pad.l + (i / Math.max(n2 - 1, 1)) * (W - pad.l - pad.r); }
+  function py(v2) { return pad.t + (1 - (v2 - mn) / rng) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const v2 = mn + (rng * i / 4); const yy = py(v2);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(Math.round(v2)), pad.l - 6, yy + 4);
+  }
+
+  // Zero line
+  if (mn < 0) {
+    ctx.strokeStyle = 'rgba(220,38,38,.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 3]);
+    ctx.beginPath(); ctx.moveTo(pad.l, py(0)); ctx.lineTo(W - pad.r, py(0)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Date labels
+  const ticks = getDateTickIndices(dates, 6);
+  for (const i of ticks) {
+    ctx.fillStyle = '#8b9099'; ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(formatDateTick(dates[i]), px(i), H - 6);
+  }
+
+  // Area under market value
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(154,117,32,.12)'); grad.addColorStop(1, 'rgba(154,117,32,.02)');
+  ctx.beginPath(); ctx.moveTo(px(0), py(values[0]));
+  for (let i = 1; i < n2; i++) ctx.lineTo(px(i), py(values[i]));
+  ctx.lineTo(px(n2 - 1), H - pad.b); ctx.lineTo(px(0), H - pad.b); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // Lines
+  function drawLine(arr, color, width, dash) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = width;
+    if (dash) ctx.setLineDash(dash);
+    ctx.moveTo(px(0), py(arr[0]));
+    for (let i = 1; i < n2; i++) ctx.lineTo(px(i), py(arr[i]));
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  drawLine(values, '#9a7520', 2.5);
+  drawLine(gains, '#15803d', 1.5, [5, 3]);
+  drawLine(nets, '#1d4ed8', 1.5, [3, 2]);
+
+  // Legend
+  ctx.font = '11px "DM Sans",sans-serif'; ctx.textAlign = 'left';
+  let lx = pad.l;
+  ctx.fillStyle = '#9a7520'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Market Value', lx + 18, pad.t + 3); lx += 110;
+  ctx.fillStyle = '#15803d'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Unrealised Gain', lx + 18, pad.t + 3); lx += 120;
+  ctx.fillStyle = '#1d4ed8'; ctx.fillRect(lx, pad.t - 2, 14, 3); ctx.fillText('Net After CGT', lx + 18, pad.t + 3);
 }
 
 function drawSharePriceChart(history, pf) {
