@@ -489,8 +489,10 @@ function renderList(type) {
 let _mOvr = {};
 
 function openAdd(type) {
-  const cats = [...new Set((type === 'income' ? S.income : S.outgoings).map(i => i.category))];
-  document.getElementById('cat-list').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
+  const predefined = type === 'income' ? CATEGORIES.income : CATEGORIES.outgoing;
+  const custom = [...new Set((type === 'income' ? S.income : S.outgoings).map(i => i.category))];
+  const allCats = [...new Set([...predefined, ...custom])].sort();
+  document.getElementById('cat-list').innerHTML = allCats.map(c => `<option>${c}</option>`).join('');
   document.getElementById('mod-title').textContent = 'Add Recurring ' + (type === 'income' ? 'Income' : 'Outgoing');
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = '';
   document.getElementById('mod-name').value = ''; document.getElementById('mod-cat').value = '';
@@ -506,8 +508,10 @@ function openAdd(type) {
 function openEdit(type, id) {
   const items = type === 'income' ? S.income : S.outgoings;
   const item = items.find(i => i.id === id); if (!item) return;
-  const cats = [...new Set(items.map(i => i.category))];
-  document.getElementById('cat-list').innerHTML = cats.map(c => `<option>${c}</option>`).join('');
+  const predefined = type === 'income' ? CATEGORIES.income : CATEGORIES.outgoing;
+  const custom = [...new Set(items.map(i => i.category))];
+  const allCats = [...new Set([...predefined, ...custom])].sort();
+  document.getElementById('cat-list').innerHTML = allCats.map(c => `<option>${c}</option>`).join('');
   document.getElementById('mod-title').textContent = 'Edit Recurring Item';
   document.getElementById('mod-type').value = type; document.getElementById('mod-id').value = id;
   document.getElementById('mod-name').value = item.name; document.getElementById('mod-cat').value = item.category;
@@ -2187,8 +2191,8 @@ function renderLog() {
   const dateInput = document.getElementById('log-date');
   if (!dateInput.value) dateInput.value = todayISO();
 
-  // Populate category datalist from existing categories
-  const allCats = new Set();
+  // Populate category datalist — predefined + any custom categories from data
+  const allCats = new Set([...CATEGORIES.income, ...CATEGORIES.outgoing]);
   [...S.income, ...S.outgoings].forEach(i => { if (i.category) allCats.add(i.category); });
   (S.transactions || []).forEach(t => { if (t.category) allCats.add(t.category); });
   document.getElementById('log-cat-list').innerHTML = [...allCats].sort().map(c => `<option>${c}</option>`).join('');

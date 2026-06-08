@@ -53,6 +53,31 @@ function newPortfolio(label) {
   };
 }
 
+const CATEGORIES = {
+  income: [
+    'Salary', 'Bonus', 'Freelance', 'Rental Income', 'Dividends',
+    'Child Benefit', 'Tax Refund', 'Gifts Received', 'Other Income'
+  ],
+  outgoing: [
+    'Food & Groceries', 'Eating Out', 'Coffee & Drinks',
+    'Rent / Mortgage', 'Utilities', 'Council Tax / Local Tax', 'Home Insurance',
+    'Phone & Internet', 'Subscriptions', 'Streaming',
+    'Transport & Fuel', 'Car Insurance', 'Car Maintenance', 'Parking & Tolls',
+    'Health & Fitness', 'Medical & Pharmacy',
+    'Clothes', 'Shoes', 'Make-up & Beauty', 'Haircuts',
+    'Children', 'Childcare', 'School & Education',
+    'Holidays & Travel', 'Eating Out & Socialising',
+    'Gifts & Celebrations', 'Christmas',
+    'Home Maintenance', 'Furniture & Homeware',
+    'Electronics & Tech', 'Books & Magazines',
+    'Pets', 'Charity & Donations',
+    'Savings', 'Investments',
+    'Credit Cards', 'Loans & Debt',
+    'Tax & Accounting', 'Insurance (Other)',
+    'Miscellaneous'
+  ]
+};
+
 const DEFAULTS = {
   startingBalance: 12500,
   startMonth: '2026-01',
