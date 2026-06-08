@@ -134,8 +134,46 @@ function renderDash() {
   document.getElementById('nw-savings').textContent = fmt(Math.round(savBal));
   document.getElementById('nw-shares').textContent = fmt(Math.round(shNetBase));
 
+  // Last-updated timestamp
+  const history = sh.priceHistory || [];
+  const updatedEl = document.getElementById('nw-updated');
+  if (history.length > 0) {
+    const latest = history[history.length - 1];
+    updatedEl.textContent = `Market: ${latest.date}`;
+  } else if (sh.ticker) {
+    updatedEl.textContent = 'No market data';
+  } else {
+    updatedEl.textContent = '';
+  }
+
   drawChart(d);
   renderAnnual(d);
+}
+
+async function refreshMarketData() {
+  const sh = S.shares || {};
+  if (!sh.ticker) return;
+  const btn = document.getElementById('nw-refresh-btn');
+  const updatedEl = document.getElementById('nw-updated');
+  btn.classList.add('spinning');
+  updatedEl.textContent = 'Updating…';
+
+  const result = await fetchShareHistory(sh.ticker, '1y');
+  btn.classList.remove('spinning');
+
+  if (result.error) {
+    updatedEl.textContent = '⚠ ' + result.error;
+    return;
+  }
+  if (result.history.length > 0) {
+    if (!S.shares.priceHistory) S.shares.priceHistory = [];
+    const existing = new Map(S.shares.priceHistory.map(p => [p.date, p]));
+    for (const h of result.history) existing.set(h.date, h);
+    S.shares.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
+    if (result.currentPrice) S.shares.currentPrice = result.currentPrice;
+    markDirty();
+  }
+  renderDash();
 }
 
 function renderAnnual(d) {
