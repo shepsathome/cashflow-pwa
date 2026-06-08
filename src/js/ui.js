@@ -1054,7 +1054,6 @@ function renderCombinedLotsTable(summary) {
   return `
     <div class="card">
       <div class="card-title">All Share Lots</div>
-      <div class="sh-import-table-wrap">
         <table class="sh-table">
           <thead>
             <tr>
@@ -1074,8 +1073,7 @@ function renderCombinedLotsTable(summary) {
               </tr>
             ` : ''}
           </tbody>
-        </table>
-      </div>
+         </table>
     </div>
   `;
 }
