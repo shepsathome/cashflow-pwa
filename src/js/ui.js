@@ -1107,7 +1107,6 @@ function renderPortfolioLotsTable(summary) {
   return `
     <div class="card">
       <div class="card-title">Share Lots</div>
-      <div class="sh-import-table-wrap">
         <table class="sh-table">
           <thead>
             <tr>
@@ -1133,7 +1132,6 @@ function renderPortfolioLotsTable(summary) {
             ` : ''}
           </tbody>
         </table>
-      </div>
     </div>
   `;
 }
