@@ -742,6 +742,8 @@ async function doFetchRates() {
 // ─────────────────────────────────────────────
 // SHARES TAB
 // ─────────────────────────────────────────────
+let _selectedPfId = 'all';
+let _sharesChartRange = '1y';
 let _pendingImportLots = [];
 let _pendingImportMeta = null;
 let _importTargetPfId = null;
@@ -770,10 +772,25 @@ function calcPortfolioTax(pf, gain) {
   };
 }
 
+function formatChartMoney(v, code, digits = 0) {
+  const cur = CURRENCIES[code] || CURRENCIES[(S.settings && S.settings.currency) || 'GBP'] || CURRENCIES.GBP;
+  try {
+    return new Intl.NumberFormat(cur.locale || 'en-GB', {
+      style: 'currency',
+      currency: code || ((S.settings && S.settings.currency) || 'GBP'),
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits
+    }).format(v);
+  } catch {
+    return `${cur.symbol || ''}${Number(v || 0).toFixed(digits)}`;
+  }
+}
+
 function computePortfolioSummary(pf) {
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
   const lots = (pf.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
   const price = pf.currentPrice || 0;
-  const rate = xrate(pf.currency || ((S.settings && S.settings.currency) || 'GBP'));
+  const rate = xrate(pf.currency || baseCur);
   const rows = [];
   let totalShares = 0, totalMarket = 0, totalCost = 0, totalGain = 0;
   let totalIncomeTax = 0, totalSocialCharges = 0, totalTax = 0, totalNet = 0;
@@ -796,7 +813,20 @@ function computePortfolioSummary(pf) {
     totalTax += tax.total;
     totalNet += net;
 
-    rows.push({ lot, shares, grantPrice, market, cost, gain, tax, net });
+    rows.push({
+      pf,
+      lot,
+      shares,
+      grantPrice,
+      market,
+      cost,
+      gain,
+      tax,
+      net,
+      marketBase: market * rate,
+      gainBase: gain * rate,
+      netBase: net * rate
+    });
   }
 
   return {
@@ -818,6 +848,27 @@ function computePortfolioSummary(pf) {
   };
 }
 
+function computeCombinedPortfolioSummary(portfolios) {
+  const summaries = portfolios.map(pf => computePortfolioSummary(pf));
+  const rows = summaries
+    .flatMap(summary => summary.rows)
+    .sort((a, b) => {
+      const d = (a.lot.date || '').localeCompare(b.lot.date || '');
+      return d !== 0 ? d : (a.pf.label || '').localeCompare(b.pf.label || '');
+    });
+
+  return {
+    summaries,
+    rows,
+    totalPortfolios: portfolios.length,
+    totalLots: rows.length,
+    totalShares: summaries.reduce((sum, summary) => sum + summary.totalShares, 0),
+    totalMarketBase: summaries.reduce((sum, summary) => sum + summary.totalMarketBase, 0),
+    totalGainBase: summaries.reduce((sum, summary) => sum + summary.totalGainBase, 0),
+    totalNetBase: summaries.reduce((sum, summary) => sum + summary.totalNetBase, 0)
+  };
+}
+
 function portfolioHeaderSubtext(pf) {
   const history = (pf.priceHistory || []);
   if (!pf.ticker) return 'Add a ticker in Settings to enable price history.';
@@ -827,170 +878,268 @@ function portfolioHeaderSubtext(pf) {
   return `${history.length} cached prices · latest ${latest.date}`;
 }
 
-function renderShares() {
-  if (!Array.isArray(S.portfolios)) S.portfolios = [];
-
-  const statusEl = document.getElementById('sh-auto-status');
-  const statsEl = document.getElementById('sh-combined-stats');
-  const container = document.getElementById('sh-portfolios-container');
-  if (!statsEl || !container) return;
-
-  let totalShares = 0, totalMarketBase = 0, totalGainBase = 0, totalNetBase = 0;
-  const cards = [];
-
-  for (const pf of S.portfolios) {
-    autoCacheSharePrice(pf);
-    const summary = computePortfolioSummary(pf);
-    totalShares += summary.totalShares;
-    totalMarketBase += summary.totalMarketBase;
-    totalGainBase += summary.totalGainBase;
-    totalNetBase += summary.totalNetBase;
-    cards.push(renderPortfolioCard(summary));
-  }
-
-  statsEl.innerHTML = `
-    <div class="sc"><div class="sl">Total Shares</div><div class="sv pos">${totalShares.toLocaleString()}</div><div class="ss">${S.portfolios.length} portfolio${S.portfolios.length === 1 ? '' : 's'}</div></div>
-    <div class="sc"><div class="sl">Market Value</div><div class="sv pos">${fmt(Math.round(totalMarketBase))}</div><div class="ss">Combined in base currency</div></div>
-    <div class="sc"><div class="sl">Unrealised Gain</div><div class="sv ${totalGainBase < 0 ? 'neg' : 'pos'}">${fmt(Math.round(totalGainBase))}</div><div class="ss">Across all lots</div></div>
-    <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${totalNetBase < 0 ? 'neg' : 'pos'}">${fmt(Math.round(totalNetBase))}</div><div class="ss">After portfolio tax rates</div></div>
-  `;
-
-  if (cards.length === 0) {
-    container.innerHTML = `
-      <div class="ip" style="grid-column:1/-1">
-        <div class="iph"><div class="ipt">No portfolios yet</div></div>
-        <div style="padding:18px;color:var(--dim)">Add your first portfolio in Settings to start tracking share lots and price history.</div>
-      </div>
-    `;
-  } else {
-    container.innerHTML = cards.join('');
-  }
-
-  if (statusEl && !window._shFetching) {
-    if (sharesNeedsFetch() && Date.now() >= (window._shFetchRetryAt || 0)) {
-      statusEl.textContent = '⟳ Refreshing stale portfolio prices…';
-      statusEl.style.color = 'var(--dim)';
-      autoFetchShareHistory();
-    } else if (sharesNeedsFetch()) {
-      statusEl.textContent = '⚠ Some portfolio prices still need refresh — retrying shortly.';
-      statusEl.style.color = 'var(--amber)';
-    } else if (!statusEl.textContent) {
-      statusEl.textContent = S.portfolios.length
-        ? `✓ ${S.portfolios.filter(pf => (pf.priceHistory || []).length > 0).length} portfolio${S.portfolios.length === 1 ? '' : 's'} ready`
-        : 'Add a portfolio to start tracking shares.';
-      statusEl.style.color = 'var(--dim)';
-    }
-  }
+function setSelectedSharePortfolio(id) {
+  _selectedPfId = id || 'all';
+  renderShares();
 }
 
-function renderPortfolioCard(summary) {
-  const { pf, rows, lots, totalShares, totalMarket, totalGain, totalNet, totalCost, totalIncomeTax, totalSocialCharges, rate } = summary;
-  const baseCur = (S.settings && S.settings.currency) || 'GBP';
-  const rates = getShareTaxRates(pf);
-  const showBase = (pf.currency || baseCur) !== baseCur && rate !== 1;
-  const isOpen = _openShareLotPfId === pf.id;
-  const importMeta = _importTargetPfId === pf.id ? _pendingImportMeta : null;
-  const currentPriceText = pf.currentPrice > 0 ? fmtAs(pf.currentPrice, pf.currency || baseCur) : '—';
+function setSharesChartRange(range) {
+  _sharesChartRange = range || '1y';
+  renderShares();
+}
 
-  let rowsHtml = '';
-  if (rows.length === 0) {
-    rowsHtml = `<tr><td colspan="11" style="text-align:left;font-family:'DM Sans',sans-serif;color:var(--dim)">No share lots yet.</td></tr>`;
-  } else {
-    rowsHtml = rows.map(({ lot, shares, grantPrice, market, cost, gain, tax, net }) => `
-      <tr>
-        <td>${escHtml(lot.date || '—')}</td>
-        <td>${escHtml(lot.label || '—')}</td>
-        <td>${shares.toLocaleString()}</td>
-        <td>${fmtAs(grantPrice, pf.currency || baseCur)}</td>
-        <td>${fmtAs(Math.round(cost), pf.currency || baseCur)}</td>
-        <td class="cp">${fmtAs(Math.round(market), pf.currency || baseCur)}</td>
-        <td class="${gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(gain), pf.currency || baseCur)}</td>
-        <td class="cn">${tax.incomeTax > 0 ? '-' + fmtAs(Math.round(tax.incomeTax), pf.currency || baseCur) : '—'}</td>
-        <td class="cn">${tax.socialCharges > 0 ? '-' + fmtAs(Math.round(tax.socialCharges), pf.currency || baseCur) : '—'}</td>
-        <td style="font-weight:600">${fmtAs(Math.round(net), pf.currency || baseCur)}</td>
-        <td><button class="sh-del" onclick="deleteShareLot('${pf.id}','${lot.id}')" title="Delete">✕</button></td>
-      </tr>
-    `).join('');
-  }
+function renderSharesHeader(portfolios) {
+  const options = [
+    `<option value="all" ${_selectedPfId === 'all' ? 'selected' : ''}>All Portfolios</option>`,
+    ...portfolios.map(pf => `<option value="${pf.id}" ${pf.id === _selectedPfId ? 'selected' : ''}>${escHtml(pf.label || 'Portfolio')}</option>`)
+  ].join('');
 
-  rowsHtml += `
-    <tr>
-      <td>Total</td>
-      <td>${lots.length} lot${lots.length === 1 ? '' : 's'}</td>
-      <td>${totalShares.toLocaleString()}</td>
-      <td>—</td>
-      <td>${fmtAs(Math.round(totalCost), pf.currency || baseCur)}</td>
-      <td>${fmtAs(Math.round(totalMarket), pf.currency || baseCur)}</td>
-      <td>${fmtAs(Math.round(totalGain), pf.currency || baseCur)}</td>
-      <td>${totalIncomeTax > 0 ? '-' + fmtAs(Math.round(totalIncomeTax), pf.currency || baseCur) : '—'}</td>
-      <td>${totalSocialCharges > 0 ? '-' + fmtAs(Math.round(totalSocialCharges), pf.currency || baseCur) : '—'}</td>
-      <td>${fmtAs(Math.round(totalNet), pf.currency || baseCur)}${showBase ? `<br><span style="font-size:10px;color:var(--dim)">≈ ${fmt(Math.round(totalNet * rate))}</span>` : ''}</td>
-      <td></td>
-    </tr>
-  `;
+  const ranges = [
+    ['3m', '3M'],
+    ['6m', '6M'],
+    ['1y', '1Y'],
+    ['3y', '3Y'],
+    ['5y', '5Y'],
+    ['max', 'Max']
+  ].map(([value, label]) => `<option value="${value}" ${value === _sharesChartRange ? 'selected' : ''}>${label}</option>`).join('');
 
   return `
-    <div class="ip">
-      <div class="iph">
-        <div>
-          <div class="ipt">${escHtml(pf.label || 'Portfolio')}</div>
-          <div style="font-size:12px;color:var(--dim);margin-top:4px">${escHtml(pf.companyName || 'No company set')}${pf.ticker ? ` · ${escHtml(pf.ticker)}` : ''}</div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Shares</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end">
+        <div style="flex:1;min-width:240px">
+          <div style="font-size:11px;color:var(--dim);margin-bottom:6px">Portfolio</div>
+          <select class="si" style="width:100%" onchange="setSelectedSharePortfolio(this.value)">${options}</select>
         </div>
-        <div style="text-align:right">
-          <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--gold)">${currentPriceText}</div>
-          <div style="font-size:11px;color:var(--dim)">${portfolioHeaderSubtext(pf)}</div>
-        </div>
-      </div>
-      <div style="padding:16px 18px 0">
-        <div class="stats" style="margin-bottom:14px">
-          <div class="sc"><div class="sl">Shares</div><div class="sv pos">${totalShares.toLocaleString()}</div><div class="ss">${lots.length} lot${lots.length === 1 ? '' : 's'}</div></div>
-          <div class="sc"><div class="sl">Market Value</div><div class="sv pos">${fmtAs(Math.round(totalMarket), pf.currency || baseCur)}</div><div class="ss">${showBase ? `≈ ${fmt(Math.round(totalMarket * rate))}` : `@ ${currentPriceText}/share`}</div></div>
-          <div class="sc"><div class="sl">Gain</div><div class="sv ${totalGain < 0 ? 'neg' : 'pos'}">${fmtAs(Math.round(totalGain), pf.currency || baseCur)}</div><div class="ss">${totalCost > 0 ? `${(totalGain / totalCost * 100).toFixed(1)}% return` : '—'}</div></div>
-          <div class="sc"><div class="sl">Net</div><div class="sv ${totalNet < 0 ? 'neg' : 'pos'}">${fmtAs(Math.round(totalNet), pf.currency || baseCur)}</div><div class="ss">PFU ${rates.totalPct}% (${rates.incomeTaxPct}% IR + ${rates.socialChargesPct}% social)</div></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-          <button class="btn btn-sm" onclick="toggleAddLot('${pf.id}')">${isOpen ? '− Hide Add Lot' : '+ Add Lot'}</button>
-          <button class="btn btn-sm" onclick="document.getElementById('sh-csv-${pf.id}').click()">Import CSV</button>
-          <input type="file" id="sh-csv-${pf.id}" accept=".csv,.txt" style="display:none" onchange="handleShareCSV(this,'${pf.id}')">
-          <span class="tooltip-trigger" tabindex="0">?
-            <span class="tooltip-body">Import share lots from CSV with columns like <code>Date</code>, <code>Label</code>, <code>Shares</code>, and optional <code>Grant Price</code>. Missing prices are resolved from the portfolio’s cached history when possible.</span>
-          </span>
-          ${pfNeedsFetch(pf) ? '<span style="font-size:11px;color:var(--dim)">Auto-fetch enabled for stale prices</span>' : ''}
-        </div>
-        ${isOpen ? `
-          <div class="sh-add-lot" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px">
-            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px">
-              <div class="sf" style="margin:0"><label>Date</label><input type="date" class="si" id="sh-lot-date-${pf.id}" value="${todayISO()}"></div>
-              <div class="sf" style="margin:0"><label>Label</label><input class="si" id="sh-lot-label-${pf.id}" placeholder="Vest ${todayISO()}"></div>
-              <div class="sf" style="margin:0"><label>Shares</label><input type="number" class="si" id="sh-lot-shares-${pf.id}" min="1" step="1" placeholder="0"></div>
-              <div class="sf" style="margin:0"><label>Grant Price (${escHtml(pf.currency || baseCur)})</label><input type="number" class="si" id="sh-lot-price-${pf.id}" min="0" step="0.01" placeholder="0.00"></div>
-            </div>
-            <div style="display:flex;gap:8px;margin-top:12px">
-              <button class="btn btn-g btn-sm" onclick="addShareLot('${pf.id}')">Save Lot</button>
-              <button class="btn btn-sm" onclick="toggleAddLot('${pf.id}')">Cancel</button>
-            </div>
-          </div>
-        ` : ''}
-        ${importMeta ? renderImportPreviewCard(pf, importMeta) : ''}
-      </div>
-      <div style="padding:0 18px 18px">
-        <div class="sh-import-table-wrap">
-          <table class="sh-table">
-            <thead>
-              <tr>
-                <th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th><th>Cost Basis</th><th>Market Value</th><th>Gain</th>
-                <th>Income Tax (${rates.incomeTaxPct}%)</th><th>Social (${rates.socialChargesPct}%)</th><th>Net Post-Sale</th><th></th>
-              </tr>
-            </thead>
-            <tbody>${rowsHtml}</tbody>
-          </table>
+        <div style="min-width:160px">
+          <div style="font-size:11px;color:var(--dim);margin-bottom:6px">Chart Range</div>
+          <select class="si" style="width:100%" onchange="setSharesChartRange(this.value)">${ranges}</select>
         </div>
       </div>
     </div>
   `;
 }
 
+function renderSharesEmptyState() {
+  return `
+    <div class="card">
+      <div class="card-title">No portfolios yet</div>
+      <div style="color:var(--dim)">Go to Settings and add a share portfolio to track lots, prices, and gains.</div>
+    </div>
+  `;
+}
+
+function renderCombinedStats(summary) {
+  return `
+    <div class="stats" style="margin-bottom:16px">
+      <div class="sc"><div class="sl">Total Shares</div><div class="sv">${summary.totalShares.toLocaleString()}</div><div class="ss">${summary.totalLots} lot${summary.totalLots === 1 ? '' : 's'} across ${summary.totalPortfolios} portfolio${summary.totalPortfolios === 1 ? '' : 's'}</div></div>
+      <div class="sc"><div class="sl">Market Value</div><div class="sv cp">${fmt(Math.round(summary.totalMarketBase))}</div><div class="ss">Combined in base currency</div></div>
+      <div class="sc"><div class="sl">Gain</div><div class="sv ${summary.totalGainBase < 0 ? 'cn' : 'cp'}">${fmt(Math.round(summary.totalGainBase))}</div><div class="ss">Unrealised across all lots</div></div>
+      <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${summary.totalNetBase < 0 ? 'cn' : 'cp'}">${fmt(Math.round(summary.totalNetBase))}</div><div class="ss">After each portfolio’s tax settings</div></div>
+    </div>
+  `;
+}
+
+function renderPortfolioStats(summary) {
+  const { pf, totalShares, totalMarket, totalGain, totalNet, totalCost, rate, lots } = summary;
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const rates = getShareTaxRates(pf);
+  const showBase = (pf.currency || baseCur) !== baseCur && rate !== 1;
+  const priceText = pf.currentPrice > 0 ? formatChartMoney(pf.currentPrice, pf.currency || baseCur, 2) : '—';
+  const returnPct = totalCost > 0 ? `${(totalGain / totalCost * 100).toFixed(1)}% return` : '—';
+
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <div class="card-title" style="margin-bottom:4px">${escHtml(pf.label || 'Portfolio')}</div>
+          <div style="font-size:12px;color:var(--dim)">${escHtml(pf.companyName || 'No company set')}${pf.ticker ? ` · ${escHtml(pf.ticker)}` : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--gold)">${priceText}</div>
+          <div style="font-size:11px;color:var(--dim)">${portfolioHeaderSubtext(pf)}</div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="sc"><div class="sl">Shares</div><div class="sv">${totalShares.toLocaleString()}</div><div class="ss">${lots.length} lot${lots.length === 1 ? '' : 's'}</div></div>
+        <div class="sc"><div class="sl">Market Value</div><div class="sv cp">${fmtAs(Math.round(totalMarket), pf.currency || baseCur)}</div><div class="ss">${showBase ? `≈ ${fmt(Math.round(totalMarket * rate))}` : `@ ${priceText}/share`}</div></div>
+        <div class="sc"><div class="sl">Gain</div><div class="sv ${totalGain < 0 ? 'cn' : 'cp'}">${fmtAs(Math.round(totalGain), pf.currency || baseCur)}</div><div class="ss">${returnPct}</div></div>
+        <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${totalNet < 0 ? 'cn' : 'cp'}">${fmtAs(Math.round(totalNet), pf.currency || baseCur)}</div><div class="ss">${rates.totalPct}% tax (${rates.incomeTaxPct}% + ${rates.socialChargesPct}%)</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPortfolioChartShell(summary) {
+  const pf = summary.pf;
+  const filteredPriceHistory = filterShareHistoryByRange(pf.priceHistory || [], _sharesChartRange);
+  const filteredValueHistory = filterPortfolioHistoryByRange(computePortfolioHistory(pf), _sharesChartRange);
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-title">Price History</div>
+        ${filteredPriceHistory.length >= 2
+          ? '<canvas id="sh-price-chart"></canvas>'
+          : `<div style="color:var(--dim)">${pf.ticker ? 'Waiting for enough cached price history to draw the chart.' : 'Add a ticker in Settings to enable price history.'}</div>`}
+      </div>
+      <div class="card">
+        <div class="card-title">Portfolio Value & Gains</div>
+        ${filteredValueHistory.dates.length >= 2
+          ? '<canvas id="sh-value-chart"></canvas>'
+          : '<div style="color:var(--dim)">Add at least one lot and fetch price history to plot value and gains over time.</div>'}
+      </div>
+    </div>
+  `;
+}
+
+function renderPortfolioActions(summary) {
+  const pf = summary.pf;
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const isOpen = _openShareLotPfId === pf.id;
+  const importMeta = _importTargetPfId === pf.id ? _pendingImportMeta : null;
+
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Manage Lots</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:${isOpen || importMeta ? '12px' : '0'}">
+        <button class="btn btn-sm" onclick="toggleAddLot('${pf.id}')">${isOpen ? '− Hide Add Lot' : '+ Add Lot'}</button>
+        <button class="btn btn-sm" onclick="document.getElementById('sh-csv-${pf.id}').click()">Import CSV</button>
+        <input type="file" id="sh-csv-${pf.id}" accept=".csv,.txt" style="display:none" onchange="handleShareCSV(this,'${pf.id}')">
+        <span class="tooltip-trigger" tabindex="0">?
+          <span class="tooltip-body">Import share lots from CSV with columns like <code>Date</code>, <code>Label</code>, <code>Shares</code>, and optional <code>Grant Price</code>. Missing prices are resolved from cached history when available.</span>
+        </span>
+        ${pfNeedsFetch(pf) ? '<span class="sh-import-info" style="padding:4px 8px">Auto-refresh will fetch stale prices.</span>' : ''}
+      </div>
+      ${isOpen ? `
+        <div class="sh-add-lot" style="padding:14px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:${importMeta ? '12px' : '0'}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">
+            <div class="sf" style="margin:0"><label>Date</label><input type="date" class="si" id="sh-lot-date-${pf.id}" value="${todayISO()}"></div>
+            <div class="sf" style="margin:0"><label>Label</label><input class="si" id="sh-lot-label-${pf.id}" placeholder="Vest ${todayISO()}"></div>
+            <div class="sf" style="margin:0"><label>Shares</label><input type="number" class="si" id="sh-lot-shares-${pf.id}" min="1" step="1" placeholder="0"></div>
+            <div class="sf" style="margin:0"><label>Grant Price (${escHtml(pf.currency || baseCur)})</label><input type="number" class="si" id="sh-lot-price-${pf.id}" min="0" step="0.01" placeholder="0.00"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-g btn-sm" onclick="addShareLot('${pf.id}')">Save Lot</button>
+            <button class="btn btn-sm" onclick="toggleAddLot('${pf.id}')">Cancel</button>
+          </div>
+        </div>
+      ` : ''}
+      ${importMeta ? renderImportPreviewCard(pf, importMeta) : ''}
+    </div>
+  `;
+}
+
+function renderCombinedLotsTable(summary) {
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const rowsHtml = summary.rows.length
+    ? summary.rows.map(row => {
+      const nativeCode = row.pf.currency || baseCur;
+      const showBase = nativeCode !== baseCur;
+      return `
+        <tr>
+          <td>${escHtml(row.pf.label || 'Portfolio')}</td>
+          <td>${escHtml(row.lot.date || '—')}</td>
+          <td>${escHtml(row.lot.label || '—')}</td>
+          <td>${row.shares.toLocaleString()}</td>
+          <td>${fmtAs(row.grantPrice, nativeCode)}</td>
+          <td>${fmtAs(Math.round(row.market), nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(row.marketBase))}</span>` : ''}</td>
+          <td class="${row.gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(row.gain), nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(row.gainBase))}</span>` : ''}</td>
+          <td class="${row.net >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(row.net), nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(row.netBase))}</span>` : ''}</td>
+        </tr>
+      `;
+    }).join('')
+    : '<tr><td colspan="8" style="text-align:left;color:var(--dim)">No share lots yet.</td></tr>';
+
+  return `
+    <div class="card">
+      <div class="card-title">All Share Lots</div>
+      <div class="sh-import-table-wrap">
+        <table class="sh-table">
+          <thead>
+            <tr>
+              <th>Portfolio</th><th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th><th>Market Value</th><th>Gain</th><th>Net After CGT</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            ${summary.rows.length ? `
+              <tr>
+                <td colspan="3">Combined total</td>
+                <td>${summary.totalShares.toLocaleString()}</td>
+                <td>—</td>
+                <td>${fmt(Math.round(summary.totalMarketBase))}</td>
+                <td class="${summary.totalGainBase >= 0 ? 'cp' : 'cn'}">${fmt(Math.round(summary.totalGainBase))}</td>
+                <td class="${summary.totalNetBase >= 0 ? 'cp' : 'cn'}">${fmt(Math.round(summary.totalNetBase))}</td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function renderPortfolioLotsTable(summary) {
+  const { pf, rows, lots, totalShares, totalMarket, totalGain, totalNet, totalCost, totalIncomeTax, totalSocialCharges, rate } = summary;
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const rates = getShareTaxRates(pf);
+  const showBase = (pf.currency || baseCur) !== baseCur && rate !== 1;
+
+  const body = rows.length
+    ? rows.map(({ lot, shares, grantPrice, market, cost, gain, tax, net }) => `
+        <tr>
+          <td>${escHtml(lot.date || '—')}</td>
+          <td>${escHtml(lot.label || '—')}</td>
+          <td>${shares.toLocaleString()}</td>
+          <td>${fmtAs(grantPrice, pf.currency || baseCur)}</td>
+          <td>${fmtAs(Math.round(cost), pf.currency || baseCur)}</td>
+          <td class="cp">${fmtAs(Math.round(market), pf.currency || baseCur)}</td>
+          <td class="${gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(gain), pf.currency || baseCur)}</td>
+          <td class="cn">${tax.incomeTax > 0 ? '-' + fmtAs(Math.round(tax.incomeTax), pf.currency || baseCur) : '—'}</td>
+          <td class="cn">${tax.socialCharges > 0 ? '-' + fmtAs(Math.round(tax.socialCharges), pf.currency || baseCur) : '—'}</td>
+          <td>${fmtAs(Math.round(net), pf.currency || baseCur)}</td>
+          <td><button class="sh-del" onclick="deleteShareLot('${pf.id}','${lot.id}')" title="Delete">✕</button></td>
+        </tr>
+      `).join('')
+    : '<tr><td colspan="11" style="text-align:left;color:var(--dim)">No share lots yet.</td></tr>';
+
+  return `
+    <div class="card">
+      <div class="card-title">Share Lots</div>
+      <div class="sh-import-table-wrap">
+        <table class="sh-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Label</th><th>Shares</th><th>Grant Price</th><th>Cost Basis</th><th>Market Value</th><th>Gain</th><th>Income Tax (${rates.incomeTaxPct}%)</th><th>Social (${rates.socialChargesPct}%)</th><th>Net After CGT</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${body}
+            ${rows.length ? `
+              <tr>
+                <td>Total</td>
+                <td>${lots.length} lot${lots.length === 1 ? '' : 's'}</td>
+                <td>${totalShares.toLocaleString()}</td>
+                <td>—</td>
+                <td>${fmtAs(Math.round(totalCost), pf.currency || baseCur)}</td>
+                <td>${fmtAs(Math.round(totalMarket), pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(totalMarket * rate))}</span>` : ''}</td>
+                <td class="${totalGain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(totalGain), pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(totalGain * rate))}</span>` : ''}</td>
+                <td>${totalIncomeTax > 0 ? '-' + fmtAs(Math.round(totalIncomeTax), pf.currency || baseCur) : '—'}</td>
+                <td>${totalSocialCharges > 0 ? '-' + fmtAs(Math.round(totalSocialCharges), pf.currency || baseCur) : '—'}</td>
+                <td class="${totalNet >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(totalNet), pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(totalNet * rate))}</span>` : ''}</td>
+                <td></td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
 function renderImportPreviewCard(pf, meta) {
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
   const totalShares = meta.lots.reduce((sum, lot) => sum + (lot.shares || 0), 0);
   let note = `${totalShares.toLocaleString()} total shares`;
   if (meta.resolved > 0) note += ` · ${meta.resolved} price${meta.resolved === 1 ? '' : 's'} resolved from history`;
@@ -1004,8 +1153,8 @@ function renderImportPreviewCard(pf, meta) {
         <td>${escHtml(lot.date)}</td>
         <td>${escHtml(lot.label)}</td>
         <td>${lot.shares.toLocaleString()}</td>
-        <td class="${priceClass}">${lot.grantPrice > 0 ? fmtAs(lot.grantPrice, pf.currency || 'USD') : '—'}</td>
-        <td style="text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--dim)">${sourceLabel}</td>
+        <td class="${priceClass}">${lot.grantPrice > 0 ? fmtAs(lot.grantPrice, pf.currency || baseCur) : '—'}</td>
+        <td style="text-align:left;font-size:12px;color:var(--dim)">${sourceLabel}</td>
       </tr>
     `;
   }).join('');
@@ -1030,6 +1179,341 @@ function renderImportPreviewCard(pf, meta) {
       </div>
     </div>
   `;
+}
+
+function renderShares() {
+  if (!Array.isArray(S.portfolios)) S.portfolios = [];
+
+  const portfolios = S.portfolios;
+  const statusEl = document.getElementById('sh-auto-status');
+  const viewEl = document.getElementById('sh-view');
+  if (!viewEl) return;
+
+  if (_selectedPfId !== 'all' && !getPortfolioById(_selectedPfId)) _selectedPfId = 'all';
+  for (const pf of portfolios) autoCacheSharePrice(pf);
+
+  if (statusEl) {
+    statusEl.title = '';
+    if (!portfolios.length) {
+      statusEl.textContent = 'Add a portfolio in Settings to start tracking shares.';
+      statusEl.style.color = 'var(--dim)';
+    } else if (window._shFetching) {
+      statusEl.textContent = '⟳ Refreshing stale portfolio prices…';
+      statusEl.style.color = 'var(--dim)';
+    } else if (sharesNeedsFetch() && Date.now() >= (window._shFetchRetryAt || 0)) {
+      statusEl.textContent = '⟳ Refreshing stale portfolio prices…';
+      statusEl.style.color = 'var(--dim)';
+      autoFetchShareHistory();
+    } else if (sharesNeedsFetch()) {
+      statusEl.textContent = '⚠ Some portfolio prices still need refresh — retrying shortly.';
+      statusEl.style.color = 'var(--amber)';
+    } else {
+      const ready = portfolios.filter(pf => (pf.priceHistory || []).length > 0).length;
+      statusEl.textContent = `✓ ${ready} portfolio${ready === 1 ? '' : 's'} ready`;
+      statusEl.style.color = ready ? 'var(--green)' : 'var(--dim)';
+    }
+  }
+
+  let html = renderSharesHeader(portfolios);
+  if (!portfolios.length) {
+    html += renderSharesEmptyState();
+  } else if (_selectedPfId === 'all') {
+    const combined = computeCombinedPortfolioSummary(portfolios);
+    html += renderCombinedStats(combined);
+    html += renderCombinedLotsTable(combined);
+  } else {
+    const pf = getPortfolioById(_selectedPfId);
+    const summary = computePortfolioSummary(pf);
+    html += renderPortfolioStats(summary);
+    html += renderPortfolioChartShell(summary);
+    html += renderPortfolioActions(summary);
+    html += renderPortfolioLotsTable(summary);
+  }
+
+  viewEl.innerHTML = html;
+
+  if (_selectedPfId !== 'all') {
+    requestAnimationFrame(() => renderSharesCharts());
+  }
+}
+
+function getShareRangeCutoff(latestDate, range) {
+  if (!latestDate || range === 'max') return null;
+  const cutoff = new Date(`${latestDate}T12:00:00`);
+  if (range.endsWith('m')) cutoff.setMonth(cutoff.getMonth() - parseInt(range, 10));
+  else if (range.endsWith('y')) cutoff.setFullYear(cutoff.getFullYear() - parseInt(range, 10));
+  return cutoff.toISOString().slice(0, 10);
+}
+
+function filterShareHistoryByRange(history, range) {
+  const sorted = (history || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  if (sorted.length <= 2) return sorted;
+  const cutoff = getShareRangeCutoff(sorted[sorted.length - 1].date, range);
+  if (!cutoff) return sorted;
+  const filtered = sorted.filter(point => point.date >= cutoff);
+  return filtered.length >= 2 ? filtered : sorted.slice(-Math.min(sorted.length, 60));
+}
+
+function filterPortfolioHistoryByRange(history, range) {
+  if (!history || !Array.isArray(history.dates) || history.dates.length <= 2) return history;
+  const cutoff = getShareRangeCutoff(history.dates[history.dates.length - 1], range);
+  if (!cutoff) return history;
+  const keep = history.dates.map((date, index) => ({ date, index })).filter(item => item.date >= cutoff);
+  const indices = keep.length >= 2 ? keep.map(item => item.index) : history.dates.map((_, index) => index).slice(-Math.min(history.dates.length, 60));
+  return {
+    dates: indices.map(index => history.dates[index]),
+    values: indices.map(index => history.values[index]),
+    costs: indices.map(index => history.costs[index]),
+    gains: indices.map(index => history.gains[index]),
+    nets: indices.map(index => history.nets[index])
+  };
+}
+
+function getDateTickIndices(dates, maxTicks = 5) {
+  if (!dates.length) return [];
+  const ticks = new Set([0, dates.length - 1]);
+  if (dates.length <= maxTicks) {
+    dates.forEach((_, index) => ticks.add(index));
+    return [...ticks].sort((a, b) => a - b);
+  }
+  const step = Math.max(1, Math.floor((dates.length - 1) / (maxTicks - 1)));
+  for (let i = step; i < dates.length - 1; i += step) ticks.add(i);
+  return [...ticks].sort((a, b) => a - b);
+}
+
+function formatDateTick(date) {
+  const d = new Date(`${date}T12:00:00`);
+  return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+}
+
+function renderSharesCharts() {
+  if (_selectedPfId === 'all') return;
+  const pf = getPortfolioById(_selectedPfId);
+  if (!pf) return;
+  const priceHistory = filterShareHistoryByRange(pf.priceHistory || [], _sharesChartRange);
+  const portfolioHistory = filterPortfolioHistoryByRange(computePortfolioHistory(pf), _sharesChartRange);
+  if (document.getElementById('sh-price-chart')) drawSharePriceChart(priceHistory, pf);
+  if (document.getElementById('sh-value-chart')) drawPortfolioValueChart(portfolioHistory, pf);
+}
+
+function drawSharePriceChart(history, pf) {
+  const cv = document.getElementById('sh-price-chart');
+  if (!cv || !history || history.length < 2) return;
+
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const W = Math.max(280, (cv.parentElement?.clientWidth || 320) - 32), H = 260;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 16, r: 16, b: 36, l: 90 };
+  const vals = history.map(point => point.price || 0);
+  let mx = Math.max(...vals), mn = Math.min(...vals);
+  if (mx === mn) {
+    const bump = Math.max(1, mx * 0.02 || 1);
+    mx += bump; mn -= bump;
+  } else {
+    const extra = (mx - mn) * 0.08;
+    mx += extra; mn -= extra;
+  }
+  const rng = mx - mn || 1;
+
+  function px(i) { return pad.l + (i / Math.max(history.length - 1, 1)) * (W - pad.l - pad.r); }
+  function py(v) { return pad.t + (1 - (v - mn) / rng) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) {
+    const v = mn + (rng * i / steps);
+    const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, yy);
+    ctx.lineTo(W - pad.r, yy);
+    ctx.stroke();
+    ctx.fillStyle = '#8b9099';
+    ctx.font = '11px "DM Mono",monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(formatChartMoney(v, pf.currency || baseCur, 2), pad.l - 6, yy + 4);
+  }
+
+  const tickIndices = getDateTickIndices(history.map(point => point.date));
+  for (const index of tickIndices) {
+    const x = px(index);
+    if (index > 0 && index < history.length - 1) {
+      ctx.strokeStyle = '#dde2eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.t);
+      ctx.lineTo(x, H - pad.b);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#8b9099';
+    ctx.font = '11px "DM Sans",sans-serif';
+    ctx.textAlign = index === history.length - 1 ? 'right' : 'left';
+    ctx.fillText(formatDateTick(history[index].date), index === history.length - 1 ? x - 2 : x + 2, H - 6);
+  }
+
+  const grad = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  grad.addColorStop(0, 'rgba(154,117,32,.18)');
+  grad.addColorStop(1, 'rgba(154,117,32,.03)');
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(vals[0]));
+  for (let i = 1; i < vals.length; i++) ctx.lineTo(px(i), py(vals[i]));
+  ctx.lineTo(px(vals.length - 1), H - pad.b);
+  ctx.lineTo(px(0), H - pad.b);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#9a7520';
+  ctx.lineWidth = 2.5;
+  ctx.moveTo(px(0), py(vals[0]));
+  for (let i = 1; i < vals.length; i++) ctx.lineTo(px(i), py(vals[i]));
+  ctx.stroke();
+
+  [0, vals.length - 1].forEach(index => {
+    ctx.beginPath();
+    ctx.arc(px(index), py(vals[index]), 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#9a7520';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
+  });
+}
+
+function drawPortfolioValueChart(history, pf) {
+  const cv = document.getElementById('sh-value-chart');
+  if (!cv || !history || !history.dates || history.dates.length < 2) return;
+
+  const baseCur = (S.settings && S.settings.currency) || 'GBP';
+  const W = Math.max(280, (cv.parentElement?.clientWidth || 320) - 32), H = 260;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 28, r: 16, b: 36, l: 84 };
+  const allVals = [...history.values, ...history.gains, ...history.nets, 0];
+  let mx = Math.max(...allVals), mn = Math.min(...allVals);
+  if (mx === mn) {
+    const bump = Math.max(1, Math.abs(mx) * 0.05 || 1);
+    mx += bump; mn -= bump;
+  } else {
+    const extra = (mx - mn) * 0.08;
+    mx += extra; mn -= extra;
+  }
+  const rng = mx - mn || 1;
+
+  function px(i) { return pad.l + (i / Math.max(history.dates.length - 1, 1)) * (W - pad.l - pad.r); }
+  function py(v) { return pad.t + (1 - (v - mn) / rng) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.font = '11px "DM Sans",sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#9a7520';
+  ctx.fillRect(pad.l, 8, 12, 3);
+  ctx.fillText('Market value', pad.l + 16, 13);
+  ctx.fillStyle = '#15803d';
+  ctx.fillRect(pad.l + 110, 8, 12, 3);
+  ctx.fillText('Unrealised gain', pad.l + 126, 13);
+  ctx.fillStyle = '#2563eb';
+  ctx.fillRect(pad.l + 250, 8, 12, 3);
+  ctx.fillText('Net after CGT', pad.l + 266, 13);
+
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) {
+    const v = mn + (rng * i / steps);
+    const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, yy);
+    ctx.lineTo(W - pad.r, yy);
+    ctx.stroke();
+    ctx.fillStyle = '#8b9099';
+    ctx.font = '11px "DM Mono",monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(formatChartMoney(v, pf.currency || baseCur, 0), pad.l - 6, yy + 4);
+  }
+
+  if (mn < 0 && mx > 0) {
+    ctx.strokeStyle = 'rgba(220,38,38,.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(pad.l, py(0));
+    ctx.lineTo(W - pad.r, py(0));
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const tickIndices = getDateTickIndices(history.dates);
+  for (const index of tickIndices) {
+    const x = px(index);
+    if (index > 0 && index < history.dates.length - 1) {
+      ctx.strokeStyle = '#dde2eb';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, pad.t);
+      ctx.lineTo(x, H - pad.b);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#8b9099';
+    ctx.font = '11px "DM Sans",sans-serif';
+    ctx.textAlign = index === history.dates.length - 1 ? 'right' : 'left';
+    ctx.fillText(formatDateTick(history.dates[index]), index === history.dates.length - 1 ? x - 2 : x + 2, H - 6);
+  }
+
+  const goldArea = ctx.createLinearGradient(0, pad.t, 0, H - pad.b);
+  goldArea.addColorStop(0, 'rgba(154,117,32,.18)');
+  goldArea.addColorStop(1, 'rgba(154,117,32,.03)');
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(history.values[0]));
+  for (let i = 1; i < history.values.length; i++) ctx.lineTo(px(i), py(history.values[i]));
+  ctx.lineTo(px(history.values.length - 1), H - pad.b);
+  ctx.lineTo(px(0), H - pad.b);
+  ctx.closePath();
+  ctx.fillStyle = goldArea;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#9a7520';
+  ctx.lineWidth = 2.5;
+  ctx.moveTo(px(0), py(history.values[0]));
+  for (let i = 1; i < history.values.length; i++) ctx.lineTo(px(i), py(history.values[i]));
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#15803d';
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([6, 4]);
+  ctx.moveTo(px(0), py(history.gains[0]));
+  for (let i = 1; i < history.gains.length; i++) ctx.lineTo(px(i), py(history.gains[i]));
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.strokeStyle = '#2563eb';
+  ctx.lineWidth = 1.8;
+  ctx.setLineDash([2, 4]);
+  ctx.moveTo(px(0), py(history.nets[0]));
+  for (let i = 1; i < history.nets.length; i++) ctx.lineTo(px(i), py(history.nets[i]));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  [0, history.values.length - 1].forEach(index => {
+    ctx.beginPath();
+    ctx.arc(px(index), py(history.values[index]), 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#9a7520';
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
+  });
 }
 
 function autoCacheSharePrice(pf) {
@@ -1107,7 +1591,8 @@ async function autoFetchShareHistory() {
 function addPortfolio() {
   if (!Array.isArray(S.portfolios)) S.portfolios = [];
   const label = `Portfolio ${S.portfolios.length + 1}`;
-  S.portfolios.push(newPortfolio(label));
+  const pf = newPortfolio(label);
+  S.portfolios.push(pf);
   markDirty();
   populateSharesSettings();
   renderShares();
@@ -1118,6 +1603,7 @@ function removePortfolio(id) {
   if (!pf) return;
   if (!confirm(`Remove portfolio "${pf.label || pf.ticker || 'Untitled'}"?`)) return;
   S.portfolios = (S.portfolios || []).filter(item => item.id !== id);
+  if (_selectedPfId === id) _selectedPfId = 'all';
   if (_openShareLotPfId === id) _openShareLotPfId = null;
   if (_importTargetPfId === id) {
     _importTargetPfId = null;
