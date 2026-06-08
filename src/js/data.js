@@ -38,6 +38,21 @@ const CURRENCIES = {
   SGD: { symbol: 'S$', locale: 'en-SG', name: 'Singapore Dollar (S$)' },
 };
 
+function newPortfolio(label) {
+  return {
+    id: 'pf_' + Date.now(),
+    label: label || 'New Portfolio',
+    companyName: '',
+    ticker: '',
+    currentPrice: 0,
+    currency: 'USD',
+    cgtRate: 31.4,
+    taxBreakdown: { incomeTax: 12.8, socialCharges: 18.6 },
+    lots: [],
+    priceHistory: []
+  };
+}
+
 const DEFAULTS = {
   startingBalance: 12500,
   startMonth: '2026-01',
@@ -48,18 +63,7 @@ const DEFAULTS = {
     ratesLastUpdated: null   // ISO timestamp of last fetch
   },
   savings: { startValue: 8000, growthPct: 4.5 },
-  shares: {
-    companyName: '',
-    ticker: '',
-    currentPrice: 0,
-    currency: 'USD',
-    cgtRate: 31.4,
-    taxBreakdown: {
-      incomeTax: 12.8,         // Impôt sur le revenu
-      socialCharges: 18.6      // Prélèvements sociaux (CSG/CRDS/etc.)
-    },
-    lots: []
-  },
+  portfolios: [],
   income: [
     { id: 'salary_1', name: 'Salary — Partner 1', category: 'Salaries', base: 3500, overrides: {} },
     { id: 'salary_2', name: 'Salary — Partner 2', category: 'Salaries', base: 2800, overrides: {} },

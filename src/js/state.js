@@ -15,7 +15,21 @@ function migrateState() {
   if (!S.settings) S.settings = deep(DEFAULTS.settings);
   if (!S.settings.exchangeRates) S.settings.exchangeRates = {};
   if (!S.transactions) S.transactions = [];
-  if (!S.shares) S.shares = deep(DEFAULTS.shares);
+  // Migrate old single S.shares to S.portfolios array
+  if (S.shares && !S.portfolios) {
+    const old = S.shares;
+    if (old.ticker || (old.lots && old.lots.length > 0)) {
+      const pf = newPortfolio(old.companyName || old.ticker || 'Portfolio 1');
+      Object.assign(pf, { companyName: old.companyName, ticker: old.ticker, currentPrice: old.currentPrice,
+        currency: old.currency, cgtRate: old.cgtRate, taxBreakdown: old.taxBreakdown,
+        lots: old.lots || [], priceHistory: old.priceHistory || [] });
+      S.portfolios = [pf];
+    } else {
+      S.portfolios = [];
+    }
+    delete S.shares;
+  }
+  if (!S.portfolios) S.portfolios = [];
 }
 
 function load() {

@@ -113,15 +113,15 @@ async function fetchExchangeRates() {
 // ─────────────────────────────────────────────
 // SHARE PRICE FETCHING — tries multiple CORS proxies
 // ─────────────────────────────────────────────
-function cacheSharePrice(date, price) {
-  if (!S.shares) return;
-  if (!S.shares.priceHistory) S.shares.priceHistory = [];
-  const existing = S.shares.priceHistory.find(p => p.date === date);
+function cacheSharePrice(pf, date, price) {
+  if (!pf) return;
+  if (!pf.priceHistory) pf.priceHistory = [];
+  const existing = pf.priceHistory.find(p => p.date === date);
   if (existing) {
     existing.price = price;
   } else {
-    S.shares.priceHistory.push({ date, price });
-    S.shares.priceHistory.sort((a, b) => a.date.localeCompare(b.date));
+    pf.priceHistory.push({ date, price });
+    pf.priceHistory.sort((a, b) => a.date.localeCompare(b.date));
   }
 }
 
@@ -225,15 +225,17 @@ async function fetchShareHistory(ticker, range = 'max') {
   }
 }
 
-function sharesNeedsFetch() {
-  const sh = S.shares || {};
-  if (!sh.ticker) return false;
-  const history = sh.priceHistory || [];
+function pfNeedsFetch(pf) {
+  if (!pf || !pf.ticker) return false;
+  const history = pf.priceHistory || [];
   if (history.length === 0) return true;
   const latest = history[history.length - 1];
-  // Refetch if latest cached price is older than 24 hours
   const age = Date.now() - new Date(latest.date + 'T23:59:59').getTime();
   return age > 24 * 60 * 60 * 1000;
+}
+
+function sharesNeedsFetch() {
+  return (S.portfolios || []).some(pf => pfNeedsFetch(pf));
 }
 
 // ─────────────────────────────────────────────
@@ -241,9 +243,9 @@ function sharesNeedsFetch() {
 // As of 2026: 12.8% income tax + 18.6% social charges = 31.4%
 // Applied only on positive capital gains (gain = sale price - grant price)
 // ─────────────────────────────────────────────
-function getShareTaxRates() {
-  const sh = S.shares || {};
-  const tb = sh.taxBreakdown || { incomeTax: 12.8, socialCharges: 18.6 };
+function getShareTaxRates(pf) {
+  const p = pf || {};
+  const tb = p.taxBreakdown || { incomeTax: 12.8, socialCharges: 18.6 };
   return {
     incomeTax: tb.incomeTax / 100,
     socialCharges: tb.socialCharges / 100,
@@ -264,11 +266,10 @@ function computeTaxOnGain(gain) {
   };
 }
 
-function computePortfolioHistory() {
-  const sh = S.shares || {};
-  const lots = (sh.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-  const history = (sh.priceHistory || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-  const taxRates = getShareTaxRates();
+function computePortfolioHistory(pf) {
+  const lots = (pf.lots || []).slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  const history = (pf.priceHistory || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const taxRates = getShareTaxRates(pf);
   if (history.length === 0 || lots.length === 0) return { dates: [], values: [], costs: [], gains: [], nets: [] };
 
   const dates = [], values = [], costs = [], gains = [], nets = [];
