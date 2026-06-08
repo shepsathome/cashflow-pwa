@@ -106,6 +106,34 @@ function renderDash() {
     : 'None yet';
   document.getElementById('sv-budgetcount').textContent = S.income.length + S.outgoings.length;
 
+  // Net Worth = Cash + Savings + Shares (net after CGT)
+  const cashBal = actualBal;
+  const savData = computeSavings();
+  const savBal = savData.bals.length > 0 ? savData.bals[savData.bals.length - 1] : S.savings.startValue;
+  // Shares: compute total net post-CGT in base currency
+  const sh = S.shares || {};
+  const shLots = sh.lots || [];
+  const shPrice = sh.currentPrice || 0;
+  const shCur = sh.currency || 'USD';
+  const shRate = xrate(shCur);
+  const shTaxRates = getShareTaxRates();
+  let shNetBase = 0;
+  if (shLots.length > 0 && shPrice > 0) {
+    for (const lot of shLots) {
+      const market = (lot.shares || 0) * shPrice;
+      const cost = (lot.shares || 0) * (lot.grantPrice || 0);
+      const gain = market - cost;
+      const tax = gain > 0 ? gain * shTaxRates.total : 0;
+      shNetBase += (market - tax) * shRate;
+    }
+  }
+  const netWorth = cashBal + savBal + shNetBase;
+
+  document.getElementById('nw-total').textContent = fmt(Math.round(netWorth));
+  document.getElementById('nw-cash').textContent = fmt(Math.round(cashBal));
+  document.getElementById('nw-savings').textContent = fmt(Math.round(savBal));
+  document.getElementById('nw-shares').textContent = fmt(Math.round(shNetBase));
+
   drawChart(d);
   renderAnnual(d);
 }
