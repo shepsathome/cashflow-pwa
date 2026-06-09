@@ -249,22 +249,74 @@ function updateSyncStatus(msg, color) {
   if (el) { el.textContent = msg; el.style.color = color || 'var(--dim)'; }
 }
 
-// Restore saved handle on startup
-async function initSync() {
-  try {
-    const handle = await loadSyncHandle();
-    if (handle) {
-      // Verify permission (silent — doesn't prompt)
-      const perm = await handle.queryPermission({ mode: 'readwrite' });
-      if (perm === 'granted') {
-        _syncDirHandle = handle;
-      } else {
-        // Permission needs re-granting — store handle but mark as needing auth
-        _syncDirHandle = handle;
-      }
+// ─── Mobile sync: save/load via file picker ───
+function syncSaveFile() {
+  S._lastSaved = new Date().toISOString();
+  const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = SYNC_FILENAME;
+  a.click();
+  URL.revokeObjectURL(url);
+  // Also save to localStorage
+  try { localStorage.setItem(SK, JSON.stringify(S)); } catch (e) {}
+  const status = document.getElementById('sync-mobile-status');
+  if (status) { status.textContent = '✓ Saved — choose your OneDrive folder when prompted'; status.style.color = 'var(--green)'; }
+}
+
+function syncLoadFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.income && !data.outgoings && !data.portfolios) throw new Error('Invalid cashflow data file');
+      S = data;
+      migrateState();
+      save();
+      populateCfg();
+      rebuildMonths();
+      renderAll();
+      const status = document.getElementById('sync-mobile-status');
+      if (status) { status.textContent = '✓ Loaded data from file'; status.style.color = 'var(--green)'; }
+    } catch (err) {
+      alert('Load failed: ' + err.message);
     }
-  } catch (e) {
-    console.warn('Sync init:', e);
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// Restore saved handle on startup + show correct UI
+async function initSync() {
+  const hasFileSystemAPI = 'showDirectoryPicker' in window;
+  const desktopEl = document.getElementById('sync-desktop');
+  const mobileEl = document.getElementById('sync-mobile');
+  const mobileLabelEl = document.getElementById('sync-mobile-label');
+
+  if (hasFileSystemAPI) {
+    // Desktop: show auto-sync + mobile fallback
+    if (desktopEl) desktopEl.style.display = '';
+    if (mobileLabelEl) mobileLabelEl.textContent = 'Manual Sync (or use on mobile)';
+    try {
+      const handle = await loadSyncHandle();
+      if (handle) {
+        const perm = await handle.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') {
+          _syncDirHandle = handle;
+        } else {
+          _syncDirHandle = handle;
+        }
+      }
+    } catch (e) {
+      console.warn('Sync init:', e);
+    }
+    updateSyncUI();
+  } else {
+    // Mobile: hide desktop section, show mobile-only
+    if (desktopEl) desktopEl.style.display = 'none';
+    if (mobileLabelEl) mobileLabelEl.textContent = 'Sync via OneDrive';
   }
-  updateSyncUI();
 }
