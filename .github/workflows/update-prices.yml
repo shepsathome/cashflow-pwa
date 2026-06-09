@@ -1,0 +1,96 @@
+name: Update Share Prices
+on:
+  schedule:
+    # Run at 22:00 UTC daily (after US market close)
+    - cron: '0 22 * * 1-5'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch prices and update Gist
+        uses: actions/github-script@v7
+        env:
+          GIST_PAT: ${{ secrets.GIST_PAT }}
+        with:
+          github-token: ${{ secrets.GIST_PAT }}
+          script: |
+            const pat = process.env.GIST_PAT;
+            if (!pat) { core.setFailed('GIST_PAT secret not set'); return; }
+
+            // Find the Cashflow Gist
+            const gists = await github.rest.gists.list({ per_page: 100 });
+            const cashflowGist = gists.data.find(g => g.files && g.files['cashflow-data.json']);
+            if (!cashflowGist) { console.log('No Cashflow Gist found — skipping'); return; }
+
+            // Read the Gist
+            const gist = await github.rest.gists.get({ gist_id: cashflowGist.id });
+            const content = gist.data.files['cashflow-data.json'].content;
+            const data = JSON.parse(content);
+            const portfolios = data.portfolios || [];
+
+            if (portfolios.length === 0) { console.log('No portfolios configured'); return; }
+
+            // Fetch prices for each portfolio
+            let updated = 0;
+            for (const pf of portfolios) {
+              if (!pf.ticker) continue;
+              console.log(`Fetching ${pf.ticker}...`);
+
+              try {
+                // Fetch daily (recent) + weekly (full) from Yahoo
+                const dailyUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(pf.ticker)}?range=1y&interval=1d`;
+                const resp = await fetch(dailyUrl, {
+                  headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CashflowPWA/1.0)' }
+                });
+                if (!resp.ok) { console.log(`  HTTP ${resp.status} for ${pf.ticker}`); continue; }
+                const yahoo = await resp.json();
+                const result = yahoo.chart?.result?.[0];
+                if (!result) { console.log(`  No data for ${pf.ticker}`); continue; }
+
+                const timestamps = result.timestamp || [];
+                const closes = result.indicators?.quote?.[0]?.close || [];
+                const meta = result.meta;
+                const currency = meta?.currency || 'USD';
+                const isPence = currency === 'GBp' || currency === 'GBX';
+                const divisor = isPence ? 100 : 1;
+
+                // Build new price points
+                const newPoints = [];
+                for (let i = 0; i < timestamps.length; i++) {
+                  if (closes[i] != null) {
+                    const d = new Date(timestamps[i] * 1000);
+                    const dateStr = d.toISOString().slice(0, 10);
+                    newPoints.push({ date: dateStr, price: +(closes[i] / divisor).toFixed(4) });
+                  }
+                }
+
+                // Merge into existing history
+                const existing = new Map((pf.priceHistory || []).map(p => [p.date, p]));
+                for (const p of newPoints) existing.set(p.date, p);
+                pf.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
+
+                // Update current price and currency
+                if (meta?.regularMarketPrice) pf.currentPrice = +(meta.regularMarketPrice / divisor).toFixed(4);
+                if (isPence) pf.currency = 'GBP';
+                else if (currency) pf.currency = currency;
+
+                console.log(`  ✓ ${pf.ticker}: ${newPoints.length} points, price=${pf.currentPrice} ${pf.currency}`);
+                updated++;
+              } catch (err) {
+                console.log(`  ⚠ ${pf.ticker}: ${err.message}`);
+              }
+            }
+
+            if (updated === 0) { console.log('No prices updated'); return; }
+
+            // Write back to Gist
+            data._lastSaved = new Date().toISOString();
+            data._lastPriceUpdate = new Date().toISOString();
+            await github.rest.gists.update({
+              gist_id: cashflowGist.id,
+              files: { 'cashflow-data.json': { content: JSON.stringify(data, null, 2) } }
+            });
+
+            console.log(`✓ Updated ${updated} portfolio(s) and synced to Gist`);
