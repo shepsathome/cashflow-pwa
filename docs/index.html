@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cashflow</title>
+<meta name="description" content="Personal finance forecast — track income, outgoings, savings and running balance over time.">
+<meta name="theme-color" content="#9a7520">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cashflow">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-inner">
+    <div class="brand">Cashflow<span class="brand-sub">Personal Finance Forecast</span></div>
+    <div class="hdr-right">
+      <div class="save-badge"><div class="dot" id="sdot"></div><span id="stxt">Saved</span></div>
+      <button class="btn" onclick="doReset()">Reset to Defaults</button>
+    </div>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="ntab on" onclick="showTab('dashboard',this)">Dashboard</div>
+    <div class="ntab" onclick="showTab('log',this)">Log</div>
+    <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
+    <div class="ntab" onclick="showTab('savings',this)">Savings</div>
+    <div class="ntab" onclick="showTab('shares',this)">Shares</div>
+    <div class="ntab" onclick="showTab('vinted',this)">Vinted</div>
+    <div class="ntab" onclick="showTab('recurring',this)">Recurring</div>
+    <div class="ntab" onclick="showTab('settings',this)">Settings</div>
+  </div>
+</nav>
+
+<div class="content">
+
+  <!-- DASHBOARD -->
+  <div class="panel on" id="tab-dashboard">
+
+    <div class="nw-banner">
+      <div class="nw-main">
+        <div class="nw-label">Net Worth</div>
+        <div class="nw-value" id="nw-total">£0</div>
+      </div>
+      <div class="nw-breakdown">
+        <div class="nw-item"><span class="nw-dot" style="background:var(--green)"></span><span class="nw-item-label">Cash</span><span class="nw-item-val" id="nw-cash">£0</span></div>
+        <div class="nw-item"><span class="nw-dot" style="background:var(--blue)"></span><span class="nw-item-label">Savings</span><span class="nw-item-val" id="nw-savings">£0</span></div>
+        <div class="nw-item"><span class="nw-dot" style="background:var(--gold)"></span><span class="nw-item-label">Shares (net)</span><span class="nw-item-val" id="nw-shares">£0</span></div>
+      </div>
+      <div class="nw-refresh">
+        <button class="nw-refresh-btn" onclick="refreshMarketData()" id="nw-refresh-btn" title="Refresh market data">⟳</button>
+        <div class="nw-updated" id="nw-updated">—</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="sc">
+        <div class="sl">Current Balance</div>
+        <div class="sv" id="sv-actual">£0</div>
+        <div class="ss" id="ss-actual">Based on logged transactions</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Balance (Start of Month)</div>
+        <div class="sv gld" id="sv-start-month">£0</div>
+        <div class="ss" id="ss-start-month">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">This Month</div>
+        <div class="sv" id="sv-month">£0</div>
+        <div class="ss" id="ss-month">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Forecast End Balance</div>
+        <div class="sv" id="sv-end">£0</div>
+        <div class="ss" id="ss-end">—</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="sc">
+        <div class="sl">Balance (Start of Year)</div>
+        <div class="sv gld" id="sv-start-year">£0</div>
+        <div class="ss" id="ss-start-year">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Forecast Min Balance</div>
+        <div class="sv" id="sv-min">£0</div>
+        <div class="ss" id="ss-min">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Avg Monthly Net (Forecast)</div>
+        <div class="sv" id="sv-avg">£0</div>
+        <div class="ss">Income minus outgoings</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Transactions Logged</div>
+        <div class="sv gld" id="sv-txcount">0</div>
+        <div class="ss" id="ss-txcount">—</div>
+      </div>
+      <div class="sc">
+        <div class="sl">Recurring Items</div>
+        <div class="sv gld" id="sv-budgetcount">0</div>
+        <div class="ss">Income + Outgoings</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Spending Insights</span>
+        <select class="si" id="spend-range" style="width:140px;height:28px;font-size:11px" onchange="renderSpendingBreakdown()">
+          <option value="1">Last Month</option>
+          <option value="3" selected>Last 3 Months</option>
+          <option value="6">Last 6 Months</option>
+          <option value="12">Last 12 Months</option>
+        </select>
+      </div>
+      <div id="spend-subtitle" style="font-size:12px;color:var(--dim);margin-bottom:16px"></div>
+      <div class="spend-layout">
+        <div class="spend-chart-wrap">
+          <canvas id="spend-chart" width="260" height="260"></canvas>
+          <div class="spend-chart-center" id="spend-center"></div>
+        </div>
+        <div class="spend-list" id="spend-list"></div>
+      </div>
+      <div style="margin-top:20px">
+        <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);margin-bottom:10px">Monthly Spending by Category</div>
+        <canvas id="spend-trend-chart"></canvas>
+      </div>
+      <div id="spend-empty" class="sav-empty" style="display:none">No outgoings to show. Add recurring items or log transactions.</div>
+    </div>
+
+    <!-- INCOME VS SPENDING + SAVINGS RATE -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Income vs Spending</span>
+        <select class="si" id="ivs-range" style="width:140px;height:28px;font-size:11px" onchange="renderIncomeVsSpending()">
+          <option value="6">Last 6 Months</option>
+          <option value="12" selected>Last 12 Months</option>
+        </select>
+      </div>
+      <div class="ivs-summary" id="ivs-summary"></div>
+      <canvas id="ivs-chart"></canvas>
+    </div>
+
+    <!-- UPCOMING COMMITMENTS -->
+    <div class="card">
+      <div class="card-title">Upcoming Commitments</div>
+      <div id="upcoming-list"></div>
+      <div id="upcoming-empty" class="sav-empty" style="display:none">No large upcoming items in the next 6 months.</div>
+    </div>
+
+    <!-- BUDGET VS ACTUALS -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Budget vs Actuals</span>
+        <span id="bva-subtitle" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+      <div id="bva-list"></div>
+      <div id="bva-empty" class="sav-empty" style="display:none">Log some transactions this month to compare against your budget.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="chart-title">Running Balance</div>
+      <canvas id="bal-chart"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Annual Summary</div>
+      <table class="at" id="at"></table>
+    </div>
+  </div>
+
+  <!-- LOG — daily transaction entry -->
+  <div class="panel" id="tab-log">
+    <div class="log-add card">
+      <div class="card-title">Quick Add Transaction</div>
+      <div class="log-form">
+        <div class="log-form-row">
+          <div class="sf">
+            <label>Date</label>
+            <input type="date" class="si" id="log-date" style="width:150px">
+          </div>
+          <div class="sf" style="flex:1">
+            <label>Description</label>
+            <input type="text" class="fi" id="log-desc" placeholder="e.g. Weekly shop, Salary June…" style="height:36px">
+          </div>
+          <div class="sf">
+            <label>Amount (<span class="cur-sym">£</span>)</label>
+            <input type="number" class="si si-num" id="log-amt" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        <div class="log-form-row">
+          <div class="sf">
+            <label>Type</label>
+            <div class="log-type-toggle">
+              <button class="btn log-type-btn active" id="log-type-out" onclick="setLogType('outgoing')">Outgoing</button>
+              <button class="btn log-type-btn" id="log-type-inc" onclick="setLogType('income')">Income</button>
+            </div>
+          </div>
+          <div class="sf" style="flex:1">
+            <label>Category</label>
+            <input type="text" class="fi" id="log-cat" list="log-cat-list" placeholder="e.g. Food & Groceries" style="height:36px">
+            <datalist id="log-cat-list"></datalist>
+          </div>
+          <div class="sf">
+            <button class="btn btn-g" style="height:36px;margin-top:19px;padding:0 24px" onclick="addTransaction()">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-summary" id="log-summary"></div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Transaction History</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="si" id="log-filter-month" style="width:130px;height:28px;font-size:11px" onchange="renderLog()">
+            <option value="all">All Months</option>
+          </select>
+          <select class="si" id="log-filter-type" style="width:100px;height:28px;font-size:11px" onchange="renderLog()">
+            <option value="all">All Types</option>
+            <option value="income">Income</option>
+            <option value="outgoing">Outgoing</option>
+          </select>
+        </div>
+      </div>
+      <div id="log-list"></div>
+      <div id="log-empty" class="sav-empty" style="display:none">No transactions logged yet. Use the form above to add your first entry.</div>
+    </div>
+  </div>
+
+  <!-- FORECAST -->
+  <div class="panel" id="tab-forecast">
+    <div class="fw"><table class="ft" id="ft"></table></div>
+  </div>
+
+  <!-- RECURRING -->
+  <div class="panel" id="tab-recurring">
+    <div class="il">
+      <div class="ip">
+        <div class="iph"><div class="ipt">Recurring Income</div><button class="btn btn-sm btn-g" onclick="openAdd('income')">+ Add</button></div>
+        <div id="inc-list"></div>
+      </div>
+      <div class="ip">
+        <div class="iph"><div class="ipt">Recurring Outgoings</div><button class="btn btn-sm btn-g" onclick="openAdd('outgoings')">+ Add</button></div>
+        <div id="out-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAVINGS -->
+  <div class="panel" id="tab-savings">
+
+    <div class="sav-settings">
+      <div class="sf">
+        <label>Starting Savings Value (<span class="cur-sym">£</span>)</label>
+        <div class="sf-row">
+          <input type="number" class="si si-num" id="sav-start" step="0.01" placeholder="0.00" onchange="applySavingsCfg()">
+        </div>
+      </div>
+      <div class="sf">
+        <label>Expected Annual Growth (%)</label>
+        <div class="sf-row">
+          <input type="number" class="si" style="width:110px" id="sav-growth" step="0.1" min="0" max="100" placeholder="0.0" onchange="applySavingsCfg()">
+        </div>
+      </div>
+      <div class="settings-note">Tag outgoing items as category <strong style="color:var(--gold)">Savings</strong> to include them here</div>
+    </div>
+
+    <div class="sav-stats">
+      <div class="sc"><div class="sl">Opening Savings</div><div class="sv gld" id="sav-sv-open">£0</div><div class="ss" id="sav-ss-open">—</div></div>
+      <div class="sc"><div class="sl">Total Contributions</div><div class="sv pos" id="sav-sv-contrib">£0</div><div class="ss">Over forecast period</div></div>
+      <div class="sc"><div class="sl">Total Growth Earned</div><div class="sv pos" id="sav-sv-growth">£0</div><div class="ss" id="sav-ss-growth">—</div></div>
+      <div class="sc"><div class="sl">Projected Final Value</div><div class="sv gld" id="sav-sv-end">£0</div><div class="ss" id="sav-ss-end">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" id="sav-chart-title">Savings Growth</div>
+      <canvas id="sav-chart"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Annual Breakdown</div>
+      <table class="sat" id="sat"></table>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-title">Monthly Detail</div>
+      <div class="smt-wrap"><table class="smt" id="smt"></table></div>
+    </div>
+
+    <div class="sav-items-list" id="sav-items-panel">
+      <div class="sav-items-hdr">Contributing Items (category: Savings)</div>
+      <div id="sav-items-body"></div>
+    </div>
+
+  </div>
+
+  <!-- SHARES -->
+  <div class="panel" id="tab-shares">
+    <div id="sh-auto-status" class="sh-status" style="padding:0 0 12px"></div>
+    <div id="sh-view"></div>
+  </div>
+
+  <!-- VINTED -->
+  <div class="panel" id="tab-vinted">
+    <div class="card">
+      <div class="card-title">Log a Sale</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+        <div class="sf">
+          <label>Date</label>
+          <input type="date" class="si" id="vin-date" style="width:150px">
+        </div>
+        <div class="sf" style="flex:1;min-width:180px">
+          <label>Item Description</label>
+          <input type="text" class="fi" id="vin-desc" placeholder="e.g. Zara jacket, Nike trainers…" style="height:36px">
+        </div>
+        <div class="sf">
+          <label>Sale Price (<span class="cur-sym">€</span>)</label>
+          <input type="number" class="si si-num" id="vin-price" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="sf">
+          <label>Seller</label>
+          <input type="text" class="fi" id="vin-seller" list="vin-seller-list" placeholder="Who sold it?" style="height:36px;width:140px">
+          <datalist id="vin-seller-list"></datalist>
+        </div>
+        <button class="btn btn-g" style="height:36px" onclick="addVintedSale()">+ Add Sale</button>
+      </div>
+    </div>
+
+    <div class="stats" id="vin-stats"></div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Monthly Sales</span>
+        <select class="si" id="vin-range" style="width:130px;height:28px;font-size:11px" onchange="renderVinted()">
+          <option value="6">Last 6 Months</option>
+          <option value="12" selected>Last 12 Months</option>
+          <option value="0">All Time</option>
+        </select>
+      </div>
+      <canvas id="vin-chart"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>All Sales</span>
+        <span id="vin-count" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+      <div id="vin-list"></div>
+      <div id="vin-empty" class="sav-empty" style="display:none">No sales logged yet. Use the form above to add your first sale.</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel" id="tab-settings">
+    <div class="settings-page">
+      <div class="settings-section">
+        <div class="settings-section-title">Currency</div>
+        <div class="settings-section-desc">Choose the base currency for totals, charts and balances. Individual items can use a different currency — they'll be converted using the exchange rates below.</div>
+        <div class="sf">
+          <label>Base / Display Currency</label>
+          <select class="si" id="set-currency" style="width:260px" onchange="applySettings()"></select>
+        </div>
+      </div>
+
+      <div class="settings-section" id="fx-section">
+        <div class="settings-section-title">Exchange Rates</div>
+        <div class="settings-section-desc">Rates used to convert foreign-currency items into your base currency. These are set as: <strong>1 foreign unit = ? base units</strong>.</div>
+        <div id="fx-rates-list"></div>
+        <div id="fx-no-foreign" class="fx-empty" style="display:none">No items use a foreign currency yet. Edit an item and change its currency to see rates here.</div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-g" id="fx-fetch-btn" onclick="doFetchRates()">⟳ Fetch Live Rates</button>
+          <span id="fx-status" style="font-size:11px;color:var(--dim)"></span>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Forecast</div>
+        <div class="settings-section-desc">Starting balance, period and month for the forecast projection.</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap">
+          <div class="sf">
+            <label>Starting Balance (<span id="set-cur-label">£</span>)</label>
+            <input type="number" class="si si-num" id="set-bal" step="0.01" onchange="applySettingsForecast()" placeholder="0.00">
+          </div>
+          <div class="sf">
+            <label>Starting Month</label>
+            <div class="sf-row">
+              <select class="si si-mon" id="set-mon" onchange="applySettingsForecast()"></select>
+              <select class="si si-yr" id="set-yr" onchange="applySettingsForecast()"></select>
+            </div>
+          </div>
+          <div class="sf">
+            <label>Forecast Period</label>
+            <select class="si si-fy" id="set-fy" onchange="applySettingsForecast()">
+              <option value="1">1 Year</option><option value="2">2 Years</option><option value="3">3 Years</option>
+              <option value="4">4 Years</option><option value="5" selected>5 Years</option><option value="6">6 Years</option>
+              <option value="7">7 Years</option><option value="8">8 Years</option><option value="9">9 Years</option>
+              <option value="10">10 Years</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Share Portfolios</div>
+        <div class="settings-section-desc">Add portfolios for each person/company. Price history is fetched automatically per ticker.</div>
+        <div id="sh-portfolios-settings"></div>
+        <button class="btn btn-g" style="margin-top:12px" onclick="addPortfolio()">+ Add Portfolio</button>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Data</div>
+        <div class="settings-section-desc">Export your data as JSON backup, or import a previous backup.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn" onclick="exportData()">⬇ Export JSON</button>
+          <button class="btn" onclick="document.getElementById('import-file').click()">⬆ Import JSON</button>
+          <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
+          <button class="btn btn-del" onclick="doReset()">Reset to Defaults</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Cloud Sync</div>
+        <div class="settings-section-desc">
+          Link a folder (e.g. OneDrive, Dropbox, Google Drive) to automatically save and load your data.
+          The app writes a single <code>cashflow-data.json</code> file to the folder you choose —
+          your cloud service syncs it automatically.
+        </div>
+        <div id="sync-status-area">
+          <div id="sync-not-linked" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-g" onclick="linkSyncFolder()">📁 Choose Sync Folder</button>
+            <span class="sh-status" id="sync-api-note"></span>
+          </div>
+          <div id="sync-linked" style="display:none">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+              <div class="sync-folder-badge" id="sync-folder-name">—</div>
+              <button class="btn btn-sm" onclick="syncNow()">⟳ Sync Now</button>
+              <button class="btn btn-sm btn-del" onclick="unlinkSyncFolder()">Unlink</button>
+            </div>
+            <div class="sh-status" id="sync-last-status"></div>
+            <div style="margin-top:10px">
+              <label style="font-size:12px;color:var(--dim);display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" id="sync-auto" onchange="toggleAutoSync()" checked> Auto-sync on every save
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Item modal -->
+<div class="mo" id="imod" onclick="if(event.target===this)closeModal()">
+  <div class="md">
+    <div class="mt" id="mod-title">Edit Item</div>
+    <input type="hidden" id="mod-type"><input type="hidden" id="mod-id">
+    <div class="fg"><label class="fl">Name</label><input type="text" class="fi" id="mod-name"></div>
+    <div class="fg"><label class="fl">Category</label><input type="text" class="fi" id="mod-cat" list="cat-list"><datalist id="cat-list"></datalist></div>
+    <div class="fg">
+      <label class="fl">Frequency</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select class="si" id="mod-freq" style="width:180px" onchange="updateFreqUI()">
+          <option value="monthly">Monthly</option>
+          <option value="weekly">Weekly</option>
+          <option value="fortnightly">Fortnightly</option>
+          <option value="quarterly">Quarterly</option>
+          <option value="annual">Annual</option>
+          <option value="one-off">One-off</option>
+        </select>
+        <select class="si" id="mod-freq-month" style="width:110px;display:none"></select>
+        <span id="mod-freq-hint" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="fl">Item Currency</label>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select class="si" id="mod-currency" style="width:240px" onchange="updateModalCurrencyHint()"></select>
+        <span class="mod-fx-hint" id="mod-fx-hint" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+    </div>
+    <div class="fg"><label class="fl"><span id="mod-base-label">Base Monthly Amount</span> (<span class="mod-cur-sym cur-sym">£</span>)</label><input type="number" class="fi" id="mod-base" step="0.01" min="0"></div>
+    <div class="fg">
+      <label class="fl">Monthly Overrides <span style="font-weight:400;text-transform:none;letter-spacing:0;font-style:italic">(values that differ from the base)</span></label>
+      <div class="ovr-list" id="ovr-list"></div>
+      <div class="add-ovr">
+        <select class="fi" id="ovr-mon" style="flex:1;max-width:168px;cursor:pointer"></select>
+        <button class="btn btn-sm btn-g" onclick="addOverride()">Add Override</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-g" onclick="saveItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/compute.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+<script>
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('SW registered:', reg.scope))
+      .catch(err => console.warn('SW registration failed:', err));
+  }
+</script>
+</body>
+</html>
