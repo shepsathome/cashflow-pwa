@@ -161,18 +161,24 @@ function parseYahooChart(data) {
   if (!result) throw new Error('No data returned for this ticker');
   const timestamps = result.timestamp || [];
   const closes = result.indicators?.quote?.[0]?.close || [];
+  const meta = result.meta;
+  const currency = meta?.currency || 'USD';
+
+  // Yahoo returns LSE prices in GBp (pence) — convert to GBP (pounds)
+  const isPence = currency === 'GBp' || currency === 'GBX';
+  const divisor = isPence ? 100 : 1;
+
   const history = [];
   for (let i = 0; i < timestamps.length; i++) {
     if (closes[i] != null) {
       const d = new Date(timestamps[i] * 1000);
-      history.push({ date: d.toISOString().slice(0, 10), price: +closes[i].toFixed(2) });
+      history.push({ date: d.toISOString().slice(0, 10), price: +(closes[i] / divisor).toFixed(4) });
     }
   }
-  const meta = result.meta;
   return {
     history,
-    currentPrice: meta?.regularMarketPrice,
-    currency: meta?.currency || 'USD',
+    currentPrice: meta?.regularMarketPrice ? +(meta.regularMarketPrice / divisor).toFixed(4) : undefined,
+    currency: isPence ? 'GBP' : currency,
     name: meta?.shortName || ''
   };
 }
