@@ -202,38 +202,57 @@ const SPEND_COLORS = [
 ];
 
 function renderSpendingBreakdown() {
-  const curMonth = todayYYYYMM();
+  const rangeMonths = parseInt(document.getElementById('spend-range').value) || 3;
   const emptyEl = document.getElementById('spend-empty');
   const listEl = document.getElementById('spend-list');
-  const titleEl = document.getElementById('spend-title');
+  const subtitleEl = document.getElementById('spend-subtitle');
   const centerEl = document.getElementById('spend-center');
   const cv = document.getElementById('spend-chart');
 
-  // Gather outgoing amounts for the current month by category
-  // Use logged transactions if any exist for this month, otherwise use recurring projections
-  const txThisMonth = (S.transactions || []).filter(t => t.type === 'outgoing' && t.date.startsWith(curMonth));
-  const useActuals = txThisMonth.length > 0;
-
-  const catTotals = {};
-
-  if (useActuals) {
-    // Group transactions by category
-    for (const tx of txThisMonth) {
-      const cat = tx.category || 'Uncategorised';
-      catTotals[cat] = (catTotals[cat] || 0) + (tx.amount || 0);
-    }
-    titleEl.textContent = `Where Am I Spending — ${mLabel(curMonth)} (Actuals)`;
-  } else {
-    // Use recurring outgoings projected for current month
-    for (const item of S.outgoings) {
-      const cat = item.category || 'Uncategorised';
-      const a = amt(item, curMonth);
-      if (a > 0) catTotals[cat] = (catTotals[cat] || 0) + a;
-    }
-    titleEl.textContent = `Where Am I Spending — ${mLabel(curMonth)} (Budget)`;
+  // Build list of months in the range
+  const now = new Date();
+  const months = [];
+  for (let i = rangeMonths - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   }
 
-  // Sort by amount descending
+  // For each month: use transactions if any outgoing txs exist, otherwise use recurring budget
+  const catTotals = {};
+  const monthlyByCategory = {}; // { cat: { '2026-01': amount, ... } }
+  const monthlyTotals = {};     // { '2026-01': total }
+  let hasActuals = false, hasBudget = false;
+
+  for (const m of months) {
+    const txs = (S.transactions || []).filter(t => t.type === 'outgoing' && t.date.startsWith(m));
+    const useActuals = txs.length > 0;
+    if (useActuals) hasActuals = true; else hasBudget = true;
+
+    const catAmounts = {};
+    if (useActuals) {
+      for (const tx of txs) {
+        const cat = tx.category || 'Uncategorised';
+        catAmounts[cat] = (catAmounts[cat] || 0) + (tx.amount || 0);
+      }
+    } else {
+      for (const item of S.outgoings) {
+        const cat = item.category || 'Uncategorised';
+        const a = amt(item, m);
+        if (a > 0) catAmounts[cat] = (catAmounts[cat] || 0) + a;
+      }
+    }
+
+    let mTotal = 0;
+    for (const [cat, val] of Object.entries(catAmounts)) {
+      catTotals[cat] = (catTotals[cat] || 0) + val;
+      if (!monthlyByCategory[cat]) monthlyByCategory[cat] = {};
+      monthlyByCategory[cat][m] = val;
+      mTotal += val;
+    }
+    monthlyTotals[m] = mTotal;
+  }
+
+  // Sort by total descending
   const cats = Object.entries(catTotals)
     .map(([cat, total]) => ({ cat, total }))
     .filter(c => c.total > 0)
@@ -243,15 +262,19 @@ function renderSpendingBreakdown() {
     cv.width = 0; cv.height = 0;
     centerEl.innerHTML = '';
     listEl.innerHTML = '';
+    subtitleEl.textContent = '';
     emptyEl.style.display = '';
     return;
   }
   emptyEl.style.display = 'none';
 
   const grandTotal = cats.reduce((s, c) => s + c.total, 0);
+  const avgMonthly = grandTotal / months.length;
+  const sourceLabel = hasActuals && hasBudget ? 'Actuals + Budget' : hasActuals ? 'Actuals' : 'Budget';
+  subtitleEl.textContent = `${mLabel(months[0])} → ${mLabel(months[months.length - 1])} · ${sourceLabel} · Avg ${fmt(Math.round(avgMonthly))}/mo`;
 
-  // Draw donut chart
-  const size = cv.parentElement.clientWidth || 260;
+  // ── Donut chart ──
+  const size = Math.min(cv.parentElement.clientWidth || 260, 260);
   cv.width = size; cv.height = size;
   const ctx = cv.getContext('2d');
   const cx = size / 2, cy = size / 2;
@@ -259,7 +282,6 @@ function renderSpendingBreakdown() {
   const innerR = outerR * 0.58;
 
   ctx.clearRect(0, 0, size, size);
-
   let startAngle = -Math.PI / 2;
   cats.forEach((c, i) => {
     const slice = (c.total / grandTotal) * Math.PI * 2;
@@ -270,27 +292,125 @@ function renderSpendingBreakdown() {
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
-    // Subtle gap between slices
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
     startAngle += slice;
   });
 
-  // Center label
-  centerEl.innerHTML = `<div class="spend-total">${fmt(Math.round(grandTotal))}</div><div class="spend-label">${useActuals ? 'spent' : 'projected'} / mo</div>`;
+  centerEl.innerHTML = `<div class="spend-total">${fmt(Math.round(grandTotal))}</div><div class="spend-label">total · ${months.length}mo</div>`;
 
-  // Ranked list
+  // ── Ranked list ──
+  const monthCount = months.length;
   listEl.innerHTML = cats.map((c, i) => {
     const pct = ((c.total / grandTotal) * 100).toFixed(1);
+    const avg = Math.round(c.total / monthCount);
     const color = SPEND_COLORS[i % SPEND_COLORS.length];
     return `<div class="spend-row">
       <div class="spend-swatch" style="background:${color}"></div>
       <div class="spend-cat">${c.cat}</div>
-      <div class="spend-amt">${fmt(Math.round(c.total))}</div>
+      <div class="spend-amt">${fmt(Math.round(c.total))}<span style="font-size:10px;color:var(--dim);font-weight:400"> (${fmt(avg)}/mo)</span></div>
       <div class="spend-pct">${pct}%</div>
     </div>`;
   }).join('');
+
+  // ── Trend chart (stacked area by category over months) ──
+  drawSpendTrendChart(months, cats, monthlyByCategory, monthlyTotals);
+}
+
+function drawSpendTrendChart(months, cats, monthlyByCategory, monthlyTotals) {
+  const cv = document.getElementById('spend-trend-chart');
+  if (!cv || months.length < 2) { if (cv) { cv.width = 0; cv.height = 0; } return; }
+
+  const W = cv.parentElement.clientWidth - 20, H = 220;
+  if (W < 100) return;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 16, r: 16, b: 36, l: 70 };
+  const n = months.length;
+
+  // Top N categories for stacking, rest grouped as "Other"
+  const topN = Math.min(cats.length, 8);
+  const topCats = cats.slice(0, topN);
+  const hasOther = cats.length > topN;
+  const displayCats = hasOther ? [...topCats, { cat: 'Other', total: cats.slice(topN).reduce((s, c) => s + c.total, 0) }] : topCats;
+
+  // Build per-month values for each display category
+  const series = displayCats.map((c, i) => {
+    if (c.cat === 'Other') {
+      const otherCats = cats.slice(topN).map(oc => oc.cat);
+      return months.map(m => otherCats.reduce((s, oc) => s + ((monthlyByCategory[oc] || {})[m] || 0), 0));
+    }
+    return months.map(m => (monthlyByCategory[c.cat] || {})[m] || 0);
+  });
+
+  // Stack values
+  const stacked = [];
+  for (let s = 0; s < series.length; s++) {
+    stacked.push(months.map((_, mi) => {
+      let sum = 0;
+      for (let k = 0; k <= s; k++) sum += series[k][mi];
+      return sum;
+    }));
+  }
+
+  const mx = Math.max(...(stacked[stacked.length - 1] || [0])) * 1.08 || 1;
+
+  function px(i) { return pad.l + (i / Math.max(n - 1, 1)) * (W - pad.l - pad.r); }
+  function py(v) { return pad.t + (1 - v / mx) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const v = (mx * i / 4); const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+  }
+
+  // Month labels
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = '#8b9099'; ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(MN[parseInt(months[i].split('-')[1]) - 1], px(i), H - 6);
+  }
+
+  // Draw stacked areas (bottom to top)
+  for (let s = stacked.length - 1; s >= 0; s--) {
+    const color = SPEND_COLORS[s % SPEND_COLORS.length];
+    const bottom = s > 0 ? stacked[s - 1] : months.map(() => 0);
+    ctx.beginPath();
+    ctx.moveTo(px(0), py(stacked[s][0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(stacked[s][i]));
+    for (let i = n - 1; i >= 0; i--) ctx.lineTo(px(i), py(bottom[i]));
+    ctx.closePath();
+    ctx.fillStyle = color + '55';
+    ctx.fill();
+    // Top line
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.moveTo(px(0), py(stacked[s][0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(stacked[s][i]));
+    ctx.stroke();
+  }
+
+  // Total line on top
+  const totals = months.map(m => monthlyTotals[m] || 0);
+  ctx.beginPath(); ctx.strokeStyle = '#1a2035'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+  ctx.moveTo(px(0), py(totals[0]));
+  for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(totals[i]));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // Legend (compact, inline)
+  ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'left';
+  let lx = pad.l;
+  displayCats.forEach((c, i) => {
+    const color = SPEND_COLORS[i % SPEND_COLORS.length];
+    const label = c.cat.length > 14 ? c.cat.slice(0, 13) + '…' : c.cat;
+    ctx.fillStyle = color; ctx.fillRect(lx, H - 20, 8, 8);
+    ctx.fillStyle = '#6b7585'; ctx.fillText(label, lx + 11, H - 13);
+    lx += ctx.measureText(label).width + 22;
+    if (lx > W - pad.r - 60) { lx = pad.l; } // wrap if needed
+  });
 }
 
 // SAVINGS

@@ -175,6 +175,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .spend-amt{font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--text);min-width:70px;text-align:right}
 .spend-pct{font-size:11px;color:var(--dim);min-width:42px;text-align:right}
 @media(max-width:600px){.spend-layout{flex-direction:column;align-items:center}.spend-chart-wrap{width:200px;height:200px}}
+#spend-trend-chart{width:100%;height:220px;display:block}
 
 /* NET WORTH BANNER */
 .nw-banner{background:linear-gradient(135deg,#1a2035 0%,#2a3350 100%);border-radius:var(--r);padding:24px 28px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,0,0,.15)}
