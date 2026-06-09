@@ -1,5 +1,5 @@
-const CACHE_NAME = 'cashflow-v3';
-const ASSETS = [
+const CACHE_NAME = 'cashflow-v4';
+const APP_SHELL = [
   './',
   './index.html',
   './css/app.css',
@@ -14,29 +14,42 @@ const ASSETS = [
   './icons/icon-512.png'
 ];
 
-// Install — cache all static assets
+// Install — cache app shell, activate immediately
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
+      .then(cache => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate — clean up old caches
+// Activate — clean old caches, claim clients immediately
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Fetch — cache-first for app shell, network-first for fonts and API
+// Fetch strategy:
+// - API/proxy requests: network only (never cache)
+// - Fonts: network-first with cache fallback
+// - App shell: stale-while-revalidate (serve cache instantly, update in background)
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Let Google Fonts go network-first with cache fallback
+  // API and proxy calls — always network, never cache
+  if (url.pathname.startsWith('/api/')
+      || url.hostname.includes('frankfurter.app')
+      || url.hostname.includes('allorigins.win')
+      || url.hostname.includes('corsproxy.io')
+      || url.hostname.includes('codetabs.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Google Fonts — network-first with cache fallback
   if (url.hostname.includes('googleapis.com') || url.hostname.includes('gstatic.com')) {
     event.respondWith(
       fetch(event.request)
@@ -50,16 +63,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Exchange rate and stock price proxies — always network, no cache
-  if (url.hostname.includes('frankfurter.app') || url.hostname.includes('allorigins.win')
-      || url.hostname.includes('corsproxy.io') || url.hostname.includes('codetabs.com')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // App shell: cache-first
+  // App shell — stale-while-revalidate
+  // Serve cached version immediately for speed, then fetch update in background
   event.respondWith(
-    caches.match(event.request)
-      .then(cached => cached || fetch(event.request))
+    caches.match(event.request).then(cached => {
+      const fetchPromise = fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => cached);
+
+      return cached || fetchPromise;
+    })
   );
 });

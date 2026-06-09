@@ -6,7 +6,7 @@
 <title>Cashflow</title>
 <meta name="description" content="Personal finance forecast — track income, outgoings, savings and running balance over time.">
 <meta name="theme-color" content="#9a7520">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Cashflow">
 <link rel="manifest" href="manifest.json">
@@ -19,21 +19,25 @@
 <body>
 
 <header class="hdr">
-  <div class="brand">Cashflow<span class="brand-sub">Personal Finance Forecast</span></div>
-  <div class="hdr-right">
-    <div class="save-badge"><div class="dot" id="sdot"></div><span id="stxt">Saved</span></div>
-    <button class="btn" onclick="doReset()">Reset to Defaults</button>
+  <div class="hdr-inner">
+    <div class="brand">Cashflow<span class="brand-sub">Personal Finance Forecast</span></div>
+    <div class="hdr-right">
+      <div class="save-badge"><div class="dot" id="sdot"></div><span id="stxt">Saved</span></div>
+      <button class="btn" onclick="doReset()">Reset to Defaults</button>
+    </div>
   </div>
 </header>
 
 <nav class="nav">
-  <div class="ntab on" onclick="showTab('dashboard',this)">Dashboard</div>
-  <div class="ntab" onclick="showTab('log',this)">Log</div>
-  <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
-  <div class="ntab" onclick="showTab('savings',this)">Savings</div>
-  <div class="ntab" onclick="showTab('shares',this)">Shares</div>
-  <div class="ntab" onclick="showTab('recurring',this)">Recurring</div>
-  <div class="ntab" onclick="showTab('settings',this)">Settings</div>
+  <div class="nav-inner">
+    <div class="ntab on" onclick="showTab('dashboard',this)">Dashboard</div>
+    <div class="ntab" onclick="showTab('log',this)">Log</div>
+    <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
+    <div class="ntab" onclick="showTab('savings',this)">Savings</div>
+    <div class="ntab" onclick="showTab('shares',this)">Shares</div>
+    <div class="ntab" onclick="showTab('recurring',this)">Recurring</div>
+    <div class="ntab" onclick="showTab('settings',this)">Settings</div>
+  </div>
 </nav>
 
 <div class="content">
