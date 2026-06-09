@@ -474,12 +474,19 @@
           </div>
         </div>
       </div>
+      <div class="settings-section" style="background:var(--s2)">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+          <div>
+            <div style="font-size:11px;color:var(--dim)">Cashflow PWA</div>
+            <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--text)" id="app-version"></div>
+          </div>
+          <button class="btn btn-del" onclick="forceRefresh()">🔄 Force Refresh</button>
+        </div>
+      </div>
     </div>
   </div>
 
 </div>
-
-<!-- Item modal -->
 <div class="mo" id="imod" onclick="if(event.target===this)closeModal()">
   <div class="md">
     <div class="mt" id="mod-title">Edit Item</div>

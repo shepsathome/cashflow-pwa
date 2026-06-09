@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // DEFAULT DATA & MONTH HELPERS
 // ─────────────────────────────────────────────
+const APP_VERSION = '2026.06.09.1';
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function buildMonths(startYYYYMM, years) {

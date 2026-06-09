@@ -1060,6 +1060,25 @@ function renderSettings() {
   updateCurrencyLabels();
   renderExchangeRates();
   populateSharesSettings();
+
+  // Version
+  const verEl = document.getElementById('app-version');
+  if (verEl) verEl.textContent = 'v' + APP_VERSION;
+}
+
+async function forceRefresh() {
+  // Unregister all service workers
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const r of regs) await r.unregister();
+  }
+  // Clear all caches
+  if ('caches' in window) {
+    const names = await caches.keys();
+    for (const n of names) await caches.delete(n);
+  }
+  // Reload from network
+  window.location.reload(true);
 }
 
 function applySettings() {
