@@ -1,11 +1,11 @@
 {
-  "name": "Cashflow",
-  "short_name": "Cashflow",
-  "description": "Personal finance forecast — track income, outgoings, savings and running balance over time.",
+  "name": "Bear Finance",
+  "short_name": "Bear Finance",
+  "description": "Personal finance tracker — income, spending, savings, shares and net worth.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#f4f6f9",
-  "theme_color": "#9a7520",
+  "theme_color": "#3e2719",
   "orientation": "any",
   "icons": [
     {

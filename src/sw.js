@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cashflow-v4';
+const CACHE_NAME = 'bear-finance-v1';
 const APP_SHELL = [
   './',
   './index.html',
