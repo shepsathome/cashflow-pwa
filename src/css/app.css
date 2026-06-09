@@ -321,7 +321,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
   .btn{padding:8px 14px;font-size:12px}
   .si{height:40px;font-size:14px}
   .si-num{width:120px}
-  .log-form-row{flex-direction:column;gap:10px}
+  .log-form-row{flex-direction:column;gap:10px;align-items:stretch}
+  .log-form-row .sf{width:100%}
+  .log-form-row .sf input,.log-form-row .sf select{width:100%!important}
+  .log-form-row .sf .log-type-toggle{width:100%}
+  .log-form-row .sf .log-type-btn{flex:1}
+  .log-form-row .sf button.btn-g{width:100%;margin-top:8px}
   .ivs-summary{flex-direction:column;gap:12px}
   .bva-row{flex-direction:column;align-items:flex-start;gap:6px}
   .bva-bar-wrap{width:100%}
