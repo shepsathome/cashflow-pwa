@@ -219,21 +219,21 @@ async function gistSyncNow() {
 
   try {
     const remote = await gistRead();
-    if (remote && remote._lastSaved && S._lastSaved) {
-      if (remote._lastSaved > S._lastSaved) {
-        // Remote is newer — load it
+    if (remote && remote._lastSaved) {
+      // If local has no _lastSaved (fresh device) or remote is newer, load remote
+      if (!S._lastSaved || remote._lastSaved > S._lastSaved) {
         S = remote;
         migrateState();
         localStorage.setItem(SK, JSON.stringify(S));
         populateCfg();
         rebuildMonths();
         renderAll();
-        statusEl.textContent = `✓ Loaded newer data from cloud (${new Date(remote._lastSaved).toLocaleTimeString()})`;
+        statusEl.textContent = `✓ Loaded data from cloud (${new Date(remote._lastSaved).toLocaleTimeString()})`;
         statusEl.style.color = 'var(--green)';
         return;
       }
     }
-    // Local is newer or same — push to cloud
+    // Local is newer — push to cloud
     S._lastSaved = new Date().toISOString();
     await gistWrite();
   } catch (err) {
