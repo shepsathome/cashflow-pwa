@@ -35,6 +35,7 @@
     <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
     <div class="ntab" onclick="showTab('savings',this)">Savings</div>
     <div class="ntab" onclick="showTab('shares',this)">Shares</div>
+    <div class="ntab" onclick="showTab('vinted',this)">Vinted</div>
     <div class="ntab" onclick="showTab('recurring',this)">Recurring</div>
     <div class="ntab" onclick="showTab('settings',this)">Settings</div>
   </div>
@@ -309,6 +310,56 @@
   <div class="panel" id="tab-shares">
     <div id="sh-auto-status" class="sh-status" style="padding:0 0 12px"></div>
     <div id="sh-view"></div>
+  </div>
+
+  <!-- VINTED -->
+  <div class="panel" id="tab-vinted">
+    <div class="card">
+      <div class="card-title">Log a Sale</div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end">
+        <div class="sf">
+          <label>Date</label>
+          <input type="date" class="si" id="vin-date" style="width:150px">
+        </div>
+        <div class="sf" style="flex:1;min-width:180px">
+          <label>Item Description</label>
+          <input type="text" class="fi" id="vin-desc" placeholder="e.g. Zara jacket, Nike trainers…" style="height:36px">
+        </div>
+        <div class="sf">
+          <label>Sale Price (<span class="cur-sym">€</span>)</label>
+          <input type="number" class="si si-num" id="vin-price" step="0.01" min="0" placeholder="0.00">
+        </div>
+        <div class="sf">
+          <label>Seller</label>
+          <input type="text" class="fi" id="vin-seller" list="vin-seller-list" placeholder="Who sold it?" style="height:36px;width:140px">
+          <datalist id="vin-seller-list"></datalist>
+        </div>
+        <button class="btn btn-g" style="height:36px" onclick="addVintedSale()">+ Add Sale</button>
+      </div>
+    </div>
+
+    <div class="stats" id="vin-stats"></div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Monthly Sales</span>
+        <select class="si" id="vin-range" style="width:130px;height:28px;font-size:11px" onchange="renderVinted()">
+          <option value="6">Last 6 Months</option>
+          <option value="12" selected>Last 12 Months</option>
+          <option value="0">All Time</option>
+        </select>
+      </div>
+      <canvas id="vin-chart"></canvas>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>All Sales</span>
+        <span id="vin-count" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+      <div id="vin-list"></div>
+      <div id="vin-empty" class="sav-empty" style="display:none">No sales logged yet. Use the form above to add your first sale.</div>
+    </div>
   </div>
 
   <!-- SETTINGS -->

@@ -27,6 +27,7 @@ function showTab(name, el) {
   if (name === 'savings') renderSavings();
   if (name === 'recurring') renderItems();
   if (name === 'shares') renderShares();
+  if (name === 'vinted') renderVinted();
   if (name === 'settings') renderSettings();
 }
 
@@ -1022,6 +1023,7 @@ function renderAll() {
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
   if (document.getElementById('tab-recurring').classList.contains('on')) renderItems();
   if (document.getElementById('tab-shares').classList.contains('on')) renderShares();
+  if (document.getElementById('tab-vinted').classList.contains('on')) renderVinted();
   if (document.getElementById('tab-settings').classList.contains('on')) renderSettings();
 }
 
@@ -1216,6 +1218,156 @@ async function doFetchRates() {
 
   btn.disabled = false;
   btn.textContent = '⟳ Fetch Live Rates';
+}
+
+// ─────────────────────────────────────────────
+// VINTED TAB
+// ─────────────────────────────────────────────
+function addVintedSale() {
+  const date = document.getElementById('vin-date').value;
+  const desc = document.getElementById('vin-desc').value.trim();
+  const price = parseFloat(document.getElementById('vin-price').value) || 0;
+  const seller = document.getElementById('vin-seller').value.trim();
+  if (!date) return alert('Please select a date.');
+  if (!desc) return alert('Please enter an item description.');
+  if (price <= 0) return alert('Please enter the sale price.');
+  if (!S.vintedSales) S.vintedSales = [];
+  S.vintedSales.push({
+    id: 'vin_' + Date.now(),
+    date, name: desc, amount: price,
+    seller: seller || ''
+  });
+  markDirty();
+  document.getElementById('vin-desc').value = '';
+  document.getElementById('vin-price').value = '';
+  renderVinted();
+}
+
+function deleteVintedSale(id) {
+  if (!confirm('Delete this sale?')) return;
+  S.vintedSales = (S.vintedSales || []).filter(s => s.id !== id);
+  markDirty();
+  renderVinted();
+}
+
+function renderVinted() {
+  const sales = (S.vintedSales || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+  const rangeMonths = parseInt(document.getElementById('vin-range').value) || 0;
+
+  // Default date to today
+  const dateInput = document.getElementById('vin-date');
+  if (!dateInput.value) dateInput.value = todayISO();
+
+  // Populate seller datalist
+  const sellers = [...new Set(sales.map(s => s.seller).filter(Boolean))];
+  document.getElementById('vin-seller-list').innerHTML = sellers.map(s => `<option>${s}</option>`).join('');
+
+  // Stats
+  const totalAll = sales.reduce((s, v) => s + v.amount, 0);
+  const thisMonth = todayYYYYMM();
+  const thisMonthTotal = sales.filter(s => s.date.startsWith(thisMonth)).reduce((s, v) => s + v.amount, 0);
+  const thisYear = new Date().getFullYear().toString();
+  const thisYearTotal = sales.filter(s => s.date.startsWith(thisYear)).reduce((s, v) => s + v.amount, 0);
+  const avgPerSale = sales.length > 0 ? Math.round(totalAll / sales.length) : 0;
+
+  document.getElementById('vin-stats').innerHTML = `
+    <div class="sc"><div class="sl">This Month</div><div class="sv pos">${fmt(Math.round(thisMonthTotal))}</div><div class="ss">${sales.filter(s => s.date.startsWith(thisMonth)).length} sales</div></div>
+    <div class="sc"><div class="sl">This Year</div><div class="sv pos">${fmt(Math.round(thisYearTotal))}</div><div class="ss">${sales.filter(s => s.date.startsWith(thisYear)).length} sales</div></div>
+    <div class="sc"><div class="sl">All Time</div><div class="sv gld">${fmt(Math.round(totalAll))}</div><div class="ss">${sales.length} sales</div></div>
+    <div class="sc"><div class="sl">Avg Per Sale</div><div class="sv">${fmt(avgPerSale)}</div><div class="ss">${sellers.length} seller${sellers.length === 1 ? '' : 's'}</div></div>
+  `;
+
+  // Chart — monthly bar chart
+  drawVintedChart(sales, rangeMonths);
+
+  // Sales list
+  const listEl = document.getElementById('vin-list');
+  const emptyEl = document.getElementById('vin-empty');
+  document.getElementById('vin-count').textContent = `${sales.length} sale${sales.length === 1 ? '' : 's'}`;
+
+  if (sales.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  listEl.innerHTML = sales.map(s => `
+    <div class="vin-row">
+      <div class="vin-date">${s.date}</div>
+      <div class="vin-desc">${s.name}</div>
+      ${s.seller ? `<div class="vin-seller">${s.seller}</div>` : ''}
+      <div class="vin-price">${fmt(s.amount)}</div>
+      <button class="vin-del" onclick="deleteVintedSale('${s.id}')" title="Delete">✕</button>
+    </div>
+  `).join('');
+}
+
+function drawVintedChart(sales, rangeMonths) {
+  const cv = document.getElementById('vin-chart');
+  if (!cv) return;
+
+  // Build monthly totals
+  const now = new Date();
+  const months = [];
+  const count = rangeMonths > 0 ? rangeMonths : 24;
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  // If "all time", extend back to first sale
+  if (rangeMonths === 0 && sales.length > 0) {
+    const earliest = sales.reduce((min, s) => s.date < min ? s.date : min, sales[0].date).slice(0, 7);
+    while (months.length > 0 && months[0] > earliest) {
+      const d = new Date(months[0] + '-01');
+      d.setMonth(d.getMonth() - 1);
+      months.unshift(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+  }
+
+  const vals = months.map(m => sales.filter(s => s.date.startsWith(m)).reduce((s, v) => s + v.amount, 0));
+  const n = months.length;
+  if (n === 0) { cv.width = 0; cv.height = 0; return; }
+
+  const W = cv.parentElement.clientWidth - 20, H = 220;
+  if (W < 100) return;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 16, r: 16, b: 36, l: 60 };
+
+  const mx = Math.max(...vals, 1) * 1.1;
+  const chartW = W - pad.l - pad.r;
+  const barW = Math.min(chartW / n * 0.7, 30);
+
+  function px(i) { return pad.l + (chartW / n) * i + (chartW / n) / 2; }
+  function py(v) { return pad.t + (1 - v / mx) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const v = mx * i / 4; const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+  }
+
+  // Bars
+  for (let i = 0; i < n; i++) {
+    const h = (vals[i] / mx) * (H - pad.t - pad.b);
+    ctx.fillStyle = vals[i] > 0 ? 'rgba(21,128,61,.6)' : 'rgba(200,200,200,.3)';
+    ctx.fillRect(px(i) - barW / 2, py(vals[i]), barW, h);
+    if (vals[i] > 0) {
+      ctx.strokeStyle = '#15803d'; ctx.lineWidth = 1;
+      ctx.strokeRect(px(i) - barW / 2, py(vals[i]), barW, h);
+    }
+    // Month label
+    ctx.fillStyle = '#8b9099'; ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+    const label = n <= 12 ? MN[parseInt(months[i].split('-')[1]) - 1] : (parseInt(months[i].split('-')[1]) === 1 ? months[i].split('-')[0] : '');
+    if (label) ctx.fillText(label, px(i), H - 6);
+  }
 }
 
 // ─────────────────────────────────────────────

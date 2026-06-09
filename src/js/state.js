@@ -30,6 +30,7 @@ function migrateState() {
     delete S.shares;
   }
   if (!S.portfolios) S.portfolios = [];
+  if (!S.vintedSales) S.vintedSales = [];
 }
 
 function load() {
