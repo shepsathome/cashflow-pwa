@@ -2311,7 +2311,7 @@ async function autoFetchShareHistory() {
     for (const point of result.history) existing.set(point.date, point);
     pf.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
     if (result.currentPrice) pf.currentPrice = result.currentPrice;
-    if (result.currency) pf.currency = pf.currency || result.currency;
+    if (result.currency) pf.currency = result.currency;
     updated++;
   }
 

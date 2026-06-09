@@ -153,7 +153,7 @@ async function fetchViaProxy(targetUrl) {
       continue;
     }
   }
-  throw new Error('Could not fetch share data — ensure the server is running (node server.js)');
+  throw new Error('Price fetch failed — load history from a PC running the Cashflow server, then sync');
 }
 
 function parseYahooChart(data) {
