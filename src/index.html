@@ -133,6 +133,36 @@
       <div id="spend-empty" class="sav-empty" style="display:none">No outgoings to show. Add recurring items or log transactions.</div>
     </div>
 
+    <!-- INCOME VS SPENDING + SAVINGS RATE -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Income vs Spending</span>
+        <select class="si" id="ivs-range" style="width:140px;height:28px;font-size:11px" onchange="renderIncomeVsSpending()">
+          <option value="6">Last 6 Months</option>
+          <option value="12" selected>Last 12 Months</option>
+        </select>
+      </div>
+      <div class="ivs-summary" id="ivs-summary"></div>
+      <canvas id="ivs-chart"></canvas>
+    </div>
+
+    <!-- UPCOMING COMMITMENTS -->
+    <div class="card">
+      <div class="card-title">Upcoming Commitments</div>
+      <div id="upcoming-list"></div>
+      <div id="upcoming-empty" class="sav-empty" style="display:none">No large upcoming items in the next 6 months.</div>
+    </div>
+
+    <!-- BUDGET VS ACTUALS -->
+    <div class="card">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <span>Budget vs Actuals</span>
+        <span id="bva-subtitle" style="font-size:11px;color:var(--dim)"></span>
+      </div>
+      <div id="bva-list"></div>
+      <div id="bva-empty" class="sav-empty" style="display:none">Log some transactions this month to compare against your budget.</div>
+    </div>
+
     <div class="card">
       <div class="card-title" id="chart-title">Running Balance</div>
       <canvas id="bal-chart"></canvas>

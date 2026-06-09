@@ -148,6 +148,9 @@ function renderDash() {
   }
 
   renderSpendingBreakdown();
+  renderIncomeVsSpending();
+  renderUpcomingCommitments();
+  renderBudgetVsActuals();
   drawChart(d);
   renderAnnual(d);
 }
@@ -411,6 +414,256 @@ function drawSpendTrendChart(months, cats, monthlyByCategory, monthlyTotals) {
     lx += ctx.measureText(label).width + 22;
     if (lx > W - pad.r - 60) { lx = pad.l; } // wrap if needed
   });
+}
+
+// ─────────────────────────────────────────────
+// INCOME VS SPENDING (bar chart + savings rate)
+// ─────────────────────────────────────────────
+function renderIncomeVsSpending() {
+  const rangeMonths = parseInt(document.getElementById('ivs-range').value) || 12;
+  const now = new Date();
+  const months = [];
+  for (let i = rangeMonths - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+
+  // Per-month income and outgoings — transactions if available, else recurring
+  const mInc = [], mOut = [], mNet = [];
+  for (const m of months) {
+    const txs = (S.transactions || []).filter(t => t.date.startsWith(m));
+    const hasTx = txs.length > 0;
+    let inc, out;
+    if (hasTx) {
+      inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
+      out = txs.filter(t => t.type === 'outgoing').reduce((s, t) => s + (t.amount || 0), 0);
+    } else {
+      inc = S.income.reduce((s, item) => s + amt(item, m), 0);
+      out = S.outgoings.reduce((s, item) => s + amt(item, m), 0);
+    }
+    mInc.push(inc); mOut.push(out); mNet.push(inc - out);
+  }
+
+  const totalInc = mInc.reduce((a, b) => a + b, 0);
+  const totalOut = mOut.reduce((a, b) => a + b, 0);
+  const totalNet = totalInc - totalOut;
+  const savingsRate = totalInc > 0 ? ((totalNet / totalInc) * 100).toFixed(1) : '0.0';
+  const avgInc = Math.round(totalInc / months.length);
+  const avgOut = Math.round(totalOut / months.length);
+
+  // Summary metrics
+  document.getElementById('ivs-summary').innerHTML = `
+    <div class="ivs-metric">
+      <div class="ivs-metric-label">Avg Income / mo</div>
+      <div class="ivs-metric-val cp">${fmt(avgInc)}</div>
+    </div>
+    <div class="ivs-metric">
+      <div class="ivs-metric-label">Avg Spending / mo</div>
+      <div class="ivs-metric-val cn">${fmt(avgOut)}</div>
+    </div>
+    <div class="ivs-metric">
+      <div class="ivs-metric-label">Avg Surplus / mo</div>
+      <div class="ivs-metric-val" style="color:${totalNet >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(Math.round(totalNet / months.length))}</div>
+    </div>
+    <div class="ivs-metric">
+      <div class="ivs-metric-label">Savings Rate</div>
+      <div class="ivs-metric-val" style="color:${parseFloat(savingsRate) >= 20 ? 'var(--green)' : parseFloat(savingsRate) >= 10 ? 'var(--gold)' : 'var(--red)'}">${savingsRate}%</div>
+      <div class="ivs-metric-note">${parseFloat(savingsRate) >= 20 ? 'Excellent' : parseFloat(savingsRate) >= 10 ? 'Good' : 'Below target'} (target: 20%+)</div>
+    </div>
+  `;
+
+  // Draw bar chart
+  drawIncomeVsSpendingChart(months, mInc, mOut, mNet);
+}
+
+function drawIncomeVsSpendingChart(months, mInc, mOut, mNet) {
+  const cv = document.getElementById('ivs-chart');
+  if (!cv || months.length === 0) return;
+  const W = cv.parentElement.clientWidth - 20, H = 280;
+  if (W < 100) return;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 16, r: 16, b: 40, l: 70 };
+  const n = months.length;
+
+  const mx = Math.max(...mInc, ...mOut) * 1.1 || 1;
+  const chartW = W - pad.l - pad.r;
+  const groupW = chartW / n;
+  const barW = Math.min(groupW * 0.35, 28);
+  const gap = 3;
+
+  function py(v) { return pad.t + (1 - v / mx) * (H - pad.t - pad.b); }
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid
+  for (let i = 0; i <= 4; i++) {
+    const v = mx * i / 4; const yy = py(v);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+  }
+
+  // Bars
+  for (let i = 0; i < n; i++) {
+    const cx = pad.l + groupW * i + groupW / 2;
+    // Income bar (green)
+    const incH = (mInc[i] / mx) * (H - pad.t - pad.b);
+    ctx.fillStyle = 'rgba(21,128,61,.65)';
+    ctx.fillRect(cx - barW - gap / 2, py(mInc[i]), barW, incH);
+    // Spending bar (red)
+    const outH = (mOut[i] / mx) * (H - pad.t - pad.b);
+    ctx.fillStyle = 'rgba(220,38,38,.65)';
+    ctx.fillRect(cx + gap / 2, py(mOut[i]), barW, outH);
+    // Month label
+    ctx.fillStyle = '#8b9099'; ctx.font = '10px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(MN[parseInt(months[i].split('-')[1]) - 1], cx, H - 8);
+    // Year label on Jan
+    if (months[i].endsWith('-01') || i === 0) {
+      ctx.fillStyle = '#aab0bc'; ctx.font = '9px "DM Sans",sans-serif';
+      ctx.fillText(months[i].split('-')[0], cx, H - 0);
+    }
+  }
+
+  // Net surplus/deficit line
+  ctx.beginPath(); ctx.strokeStyle = '#9a7520'; ctx.lineWidth = 2;
+  for (let i = 0; i < n; i++) {
+    const cx = pad.l + groupW * i + groupW / 2;
+    const netY = py(Math.max(mNet[i], 0));
+    if (i === 0) ctx.moveTo(cx, netY); else ctx.lineTo(cx, netY);
+  }
+  ctx.stroke();
+
+  // Dots on net line
+  for (let i = 0; i < n; i++) {
+    const cx = pad.l + groupW * i + groupW / 2;
+    const netY = py(Math.max(mNet[i], 0));
+    ctx.beginPath(); ctx.arc(cx, netY, 3, 0, Math.PI * 2);
+    ctx.fillStyle = mNet[i] >= 0 ? '#9a7520' : '#dc2626';
+    ctx.fill();
+  }
+
+  // Legend
+  ctx.font = '11px "DM Sans",sans-serif'; ctx.textAlign = 'left';
+  let lx = pad.l;
+  ctx.fillStyle = 'rgba(21,128,61,.65)'; ctx.fillRect(lx, pad.t - 2, 12, 10); ctx.fillStyle = '#6b7585'; ctx.fillText('Income', lx + 16, pad.t + 7); lx += 70;
+  ctx.fillStyle = 'rgba(220,38,38,.65)'; ctx.fillRect(lx, pad.t - 2, 12, 10); ctx.fillStyle = '#6b7585'; ctx.fillText('Spending', lx + 16, pad.t + 7); lx += 80;
+  ctx.fillStyle = '#9a7520'; ctx.fillRect(lx, pad.t + 2, 14, 3); ctx.fillStyle = '#6b7585'; ctx.fillText('Surplus', lx + 18, pad.t + 7);
+}
+
+// ─────────────────────────────────────────────
+// UPCOMING COMMITMENTS
+// ─────────────────────────────────────────────
+function renderUpcomingCommitments() {
+  const listEl = document.getElementById('upcoming-list');
+  const emptyEl = document.getElementById('upcoming-empty');
+  const now = new Date();
+  const curMonth = todayYYYYMM();
+
+  // Look 6 months ahead for non-monthly items with significant amounts
+  const upcoming = [];
+  for (let i = 1; i <= 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const m = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    for (const item of S.outgoings) {
+      const freq = item.frequency || 'monthly';
+      const a = amt(item, m);
+      // Show: non-monthly items with amounts, OR monthly items > avg monthly * 1.5 (spikes via overrides)
+      const isNonMonthly = freq !== 'monthly' && freq !== 'weekly' && freq !== 'fortnightly';
+      const isSpike = item.overrides && item.overrides[m] !== undefined && item.overrides[m] > (item.base || 0) * 1.5;
+      if (a > 0 && (isNonMonthly || isSpike)) {
+        upcoming.push({ month: m, name: item.name, category: item.category, amount: a });
+      }
+    }
+  }
+
+  if (upcoming.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  listEl.innerHTML = upcoming.map(u => `
+    <div class="upcoming-row">
+      <div class="upcoming-month">${mLabel(u.month)}</div>
+      <div class="upcoming-name">${u.name}</div>
+      <div class="upcoming-cat">${u.category}</div>
+      <div class="upcoming-amt">${fmt(Math.round(u.amount))}</div>
+    </div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+// BUDGET VS ACTUALS
+// ─────────────────────────────────────────────
+function renderBudgetVsActuals() {
+  const listEl = document.getElementById('bva-list');
+  const emptyEl = document.getElementById('bva-empty');
+  const subtitleEl = document.getElementById('bva-subtitle');
+  const curMonth = todayYYYYMM();
+
+  const txs = (S.transactions || []).filter(t => t.type === 'outgoing' && t.date.startsWith(curMonth));
+  if (txs.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = '';
+    subtitleEl.textContent = '';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  subtitleEl.textContent = mLabel(curMonth);
+
+  // Budget: recurring outgoings for this month by category
+  const budget = {};
+  for (const item of S.outgoings) {
+    const cat = item.category || 'Uncategorised';
+    budget[cat] = (budget[cat] || 0) + amt(item, curMonth);
+  }
+
+  // Actuals: transactions this month by category
+  const actuals = {};
+  for (const tx of txs) {
+    const cat = tx.category || 'Uncategorised';
+    actuals[cat] = (actuals[cat] || 0) + (tx.amount || 0);
+  }
+
+  // Merge categories
+  const allCats = [...new Set([...Object.keys(budget), ...Object.keys(actuals)])];
+  const rows = allCats.map(cat => ({
+    cat,
+    budget: budget[cat] || 0,
+    actual: actuals[cat] || 0,
+    diff: (actuals[cat] || 0) - (budget[cat] || 0)
+  })).filter(r => r.budget > 0 || r.actual > 0)
+    .sort((a, b) => b.actual - a.actual);
+
+  const maxVal = Math.max(...rows.map(r => Math.max(r.budget, r.actual)), 1);
+
+  listEl.innerHTML = rows.map(r => {
+    const pct = r.budget > 0 ? Math.round((r.actual / r.budget) * 100) : 100;
+    const barColor = pct > 100 ? 'var(--red)' : pct > 80 ? 'var(--amber)' : 'var(--green)';
+    const barWidth = Math.min(Math.round((r.actual / maxVal) * 100), 100);
+    const budgetWidth = r.budget > 0 ? Math.min(Math.round((r.budget / maxVal) * 100), 100) : 0;
+    const diffClass = r.diff > 0 ? 'bva-over' : 'bva-under';
+    const diffLabel = r.diff > 0 ? `+${fmt(Math.round(r.diff))} over` : r.diff < 0 ? `${fmt(Math.round(Math.abs(r.diff)))} under` : 'on budget';
+
+    return `<div class="bva-row">
+      <div class="bva-cat">${r.cat}</div>
+      <div class="bva-bar-wrap">
+        <div class="bva-bar-track">
+          <div class="bva-bar-fill" style="width:${barWidth}%;background:${barColor}"></div>
+          ${budgetWidth > 0 ? `<div style="position:absolute;left:${budgetWidth}%;top:0;bottom:0;width:2px;background:var(--dim);opacity:.4" title="Budget: ${fmt(Math.round(r.budget))}"></div>` : ''}
+        </div>
+      </div>
+      <div class="bva-vals">
+        ${fmt(Math.round(r.actual))} / ${r.budget > 0 ? fmt(Math.round(r.budget)) : '—'}
+        <span class="${diffClass}" style="display:block;font-size:10px">${diffLabel}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // SAVINGS
