@@ -48,10 +48,14 @@ function load() {
 function save() {
   S._lastSaved = new Date().toISOString();
   try { localStorage.setItem(SK, JSON.stringify(S)); dirty = false; badge(); } catch (e) {}
-  // Gist auto-sync
+  // Gist auto-sync (only if we have real data — prevent empty overwrites)
   if (_gistAutoSync && _gistPAT && _gistId) {
-    clearTimeout(window._gistSyncTimer);
-    window._gistSyncTimer = setTimeout(() => gistWrite().catch(err => console.warn('Gist sync failed:', err)), 2000);
+    const hasData = (S.income && S.income.length > 0) || (S.outgoings && S.outgoings.length > 0)
+      || (S.transactions && S.transactions.length > 0) || (S.portfolios && S.portfolios.length > 0);
+    if (hasData) {
+      clearTimeout(window._gistSyncTimer);
+      window._gistSyncTimer = setTimeout(() => gistWrite().catch(err => console.warn('Gist sync failed:', err)), 2000);
+    }
   }
 }
 
@@ -219,9 +223,14 @@ async function gistSyncNow() {
 
   try {
     const remote = await gistRead();
+    const localHasData = (S.income && S.income.length > 0) || (S.outgoings && S.outgoings.length > 0)
+      || (S.transactions && S.transactions.length > 0) || (S.portfolios && S.portfolios.length > 0);
+    const remoteHasData = remote && ((remote.income && remote.income.length > 0) || (remote.outgoings && remote.outgoings.length > 0)
+      || (remote.transactions && remote.transactions.length > 0) || (remote.portfolios && remote.portfolios.length > 0));
+
     if (remote && remote._lastSaved) {
-      // If local has no _lastSaved (fresh device) or remote is newer, load remote
-      if (!S._lastSaved || remote._lastSaved > S._lastSaved) {
+      // Fresh device (no _lastSaved) → always load remote if it has data
+      if (!S._lastSaved && remoteHasData) {
         S = remote;
         migrateState();
         localStorage.setItem(SK, JSON.stringify(S));
@@ -232,8 +241,34 @@ async function gistSyncNow() {
         statusEl.style.color = 'var(--green)';
         return;
       }
+      // Remote is newer → load it
+      if (S._lastSaved && remote._lastSaved > S._lastSaved) {
+        S = remote;
+        migrateState();
+        localStorage.setItem(SK, JSON.stringify(S));
+        populateCfg();
+        rebuildMonths();
+        renderAll();
+        statusEl.textContent = `✓ Loaded newer data from cloud (${new Date(remote._lastSaved).toLocaleTimeString()})`;
+        statusEl.style.color = 'var(--green)';
+        return;
+      }
     }
-    // Local is newer — push to cloud
+
+    // Safety: don't overwrite a populated Gist with empty local data
+    if (!localHasData && remoteHasData) {
+      statusEl.textContent = '⚠ Local data is empty — loading from cloud instead';
+      statusEl.style.color = 'var(--amber)';
+      S = remote;
+      migrateState();
+      localStorage.setItem(SK, JSON.stringify(S));
+      populateCfg();
+      rebuildMonths();
+      renderAll();
+      return;
+    }
+
+    // Local is newer or same — push to cloud
     S._lastSaved = new Date().toISOString();
     await gistWrite();
   } catch (err) {
