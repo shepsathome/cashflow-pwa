@@ -26,6 +26,12 @@ function amtRaw(item, m) {
       const mo = parseInt(m.split('-')[1]);
       return mo === (item.frequencyMonth || 1) ? base : 0;
     }
+    case 'bi-annual': {
+      const mo = parseInt(m.split('-')[1]);
+      const anchor = item.frequencyMonth || 1;
+      const second = ((anchor - 1 + 6) % 12) + 1;
+      return (mo === anchor || mo === second) ? base : 0;
+    }
     case 'one-off':
       return 0; // Only via overrides
     default:
@@ -50,7 +56,7 @@ function amt(item, m) {
 function fmtAs(v, code) {
   if (v === 0) return '—';
   const cur = CURRENCIES[code] || getCurrency();
-  const s = Math.abs(v).toLocaleString(cur.locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const s = Math.abs(v).toLocaleString(cur.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (v < 0 ? '-' + cur.symbol : cur.symbol) + s;
 }
 
@@ -304,7 +310,7 @@ function getCurrency() {
 function fmt(v, z = true) {
   if (!z && v === 0) return '—';
   const cur = getCurrency();
-  const s = Math.abs(v).toLocaleString(cur.locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const s = Math.abs(v).toLocaleString(cur.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return (v < 0 ? '-' + cur.symbol : cur.symbol) + s;
 }
 

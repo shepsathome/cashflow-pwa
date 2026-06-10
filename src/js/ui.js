@@ -50,7 +50,7 @@ function renderDash() {
   document.getElementById('chart-title').textContent = `Running Balance — ${mLabel(S.startMonth)} → ${mLabel(endM)}`;
 
   const svAct = document.getElementById('sv-actual');
-  svAct.textContent = fmt(Math.round(actualBal));
+  svAct.textContent = fmt(actualBal);
   svAct.className = 'sv ' + (actualBal < 0 ? 'neg' : 'pos');
   document.getElementById('ss-actual').textContent = txs.length > 0
     ? `From ${txs.length} transaction${txs.length === 1 ? '' : 's'}`
@@ -61,7 +61,7 @@ function renderDash() {
     .reduce((s, t) => s + (t.type === 'income' ? txAmt(t) : -txAmt(t)), 0);
   const startOfMonthBal = S.startingBalance + priorTxNet;
   const svSoM = document.getElementById('sv-start-month');
-  svSoM.textContent = fmt(Math.round(startOfMonthBal));
+  svSoM.textContent = fmt(startOfMonthBal);
   svSoM.className = 'sv ' + (startOfMonthBal < 0 ? 'neg' : 'gld');
   document.getElementById('ss-start-month').textContent = mLabel(curMonth);
 
@@ -70,13 +70,13 @@ function renderDash() {
     .reduce((s, t) => s + (t.type === 'income' ? txAmt(t) : -txAmt(t)), 0);
   const startOfYearBal = S.startingBalance + priorYearTxNet;
   const svSoY = document.getElementById('sv-start-year');
-  svSoY.textContent = fmt(Math.round(startOfYearBal));
+  svSoY.textContent = fmt(startOfYearBal);
   svSoY.className = 'sv ' + (startOfYearBal < 0 ? 'neg' : 'gld');
   document.getElementById('ss-start-year').textContent = `Jan ${curYear}`;
 
   // This month
   const svMo = document.getElementById('sv-month');
-  svMo.textContent = fmt(Math.round(cm.net));
+  svMo.textContent = fmt(cm.net);
   svMo.className = 'sv ' + (cm.net < 0 ? 'neg' : cm.net > 0 ? 'pos' : '');
   document.getElementById('ss-month').textContent = cm.count > 0
     ? `${mLabel(cm.month)} · ${cm.count} entries`
@@ -95,7 +95,7 @@ function renderDash() {
 
   // Avg net
   const sa = document.getElementById('sv-avg');
-  sa.textContent = fmt(Math.round(avgNet)); sa.className = 'sv ' + (avgNet < 0 ? 'neg' : 'pos');
+  sa.textContent = fmt(avgNet); sa.className = 'sv ' + (avgNet < 0 ? 'neg' : 'pos');
 
   // Counts
   document.getElementById('sv-txcount').textContent = txs.length;
@@ -130,10 +130,10 @@ function renderDash() {
   }
   const netWorth = cashBal + savBal + shNetBase;
 
-  document.getElementById('nw-total').textContent = fmt(Math.round(netWorth));
-  document.getElementById('nw-cash').textContent = fmt(Math.round(cashBal));
-  document.getElementById('nw-savings').textContent = fmt(Math.round(savBal));
-  document.getElementById('nw-shares').textContent = fmt(Math.round(shNetBase));
+  document.getElementById('nw-total').textContent = fmt(netWorth);
+  document.getElementById('nw-cash').textContent = fmt(cashBal);
+  document.getElementById('nw-savings').textContent = fmt(savBal);
+  document.getElementById('nw-shares').textContent = fmt(shNetBase);
 
   // Last-updated timestamp
   const updatedEl = document.getElementById('nw-updated');
@@ -185,10 +185,10 @@ function renderAnnual(d) {
   const yOut = yrs.map(y => MONTHS.filter(m => m.startsWith(y + '')).reduce((s, m) => s + d.out[MONTHS.indexOf(m)], 0));
   const yNet = yrs.map((_, i) => yInc[i] - yOut[i]);
   const yEnd = yrs.map(y => { const ms = MONTHS.filter(m => m.startsWith(y + '')); const i = MONTHS.indexOf(ms[ms.length - 1]); return d.bals[i] || 0; });
-  h += `<tr><td>Total Income</td>${yInc.map(v => `<td class="cp">${fmt(Math.round(v))}</td>`).join('')}</tr>`;
-  h += `<tr><td>Total Outgoings</td>${yOut.map(v => `<td class="cn">${fmt(Math.round(v))}</td>`).join('')}</tr>`;
-  h += `<tr><td>Net</td>${yNet.map(v => `<td style="color:${v < 0 ? 'var(--red)' : 'var(--green)'}">${fmt(Math.round(v))}</td>`).join('')}</tr>`;
-  h += `<tr><td>Year-End Balance</td>${yEnd.map(v => `<td style="color:${v < 0 ? 'var(--red)' : 'var(--gold)'};">${fmt(Math.round(v))}</td>`).join('')}</tr>`;
+  h += `<tr><td>Total Income</td>${yInc.map(v => `<td class="cp">${fmt(v)}</td>`).join('')}</tr>`;
+  h += `<tr><td>Total Outgoings</td>${yOut.map(v => `<td class="cn">${fmt(v)}</td>`).join('')}</tr>`;
+  h += `<tr><td>Net</td>${yNet.map(v => `<td style="color:${v < 0 ? 'var(--red)' : 'var(--green)'}">${fmt(v)}</td>`).join('')}</tr>`;
+  h += `<tr><td>Year-End Balance</td>${yEnd.map(v => `<td style="color:${v < 0 ? 'var(--red)' : 'var(--gold)'};">${fmt(v)}</td>`).join('')}</tr>`;
   h += '</tbody>';
   document.getElementById('at').innerHTML = h;
 }
@@ -272,7 +272,7 @@ function renderSpendingBreakdown() {
   const grandTotal = cats.reduce((s, c) => s + c.total, 0);
   const avgMonthly = grandTotal / months.length;
   const sourceLabel = hasActuals && hasBudget ? 'Actuals + Budget' : hasActuals ? 'Actuals' : 'Budget';
-  subtitleEl.textContent = `${mLabel(months[0])} → ${mLabel(months[months.length - 1])} · ${sourceLabel} · Avg ${fmt(Math.round(avgMonthly))}/mo`;
+  subtitleEl.textContent = `${mLabel(months[0])} → ${mLabel(months[months.length - 1])} · ${sourceLabel} · Avg ${fmt(avgMonthly)}/mo`;
 
   // ── Donut chart ──
   const size = Math.min(cv.parentElement.clientWidth || 260, 260);
@@ -297,7 +297,7 @@ function renderSpendingBreakdown() {
     startAngle += slice;
   });
 
-  centerEl.innerHTML = `<div class="spend-total">${fmt(Math.round(grandTotal))}</div><div class="spend-label">total · ${months.length}mo</div>`;
+  centerEl.innerHTML = `<div class="spend-total">${fmt(grandTotal)}</div><div class="spend-label">total · ${months.length}mo</div>`;
 
   // ── Ranked list ──
   const monthCount = months.length;
@@ -308,7 +308,7 @@ function renderSpendingBreakdown() {
     return `<div class="spend-row">
       <div class="spend-swatch" style="background:${color}"></div>
       <div class="spend-cat">${c.cat}</div>
-      <div class="spend-amt">${fmt(Math.round(c.total))}<span style="font-size:10px;color:var(--dim);font-weight:400"> (${fmt(avg)}/mo)</span></div>
+      <div class="spend-amt">${fmt(c.total)}<span style="font-size:10px;color:var(--dim);font-weight:400"> (${fmt(avg)}/mo)</span></div>
       <div class="spend-pct">${pct}%</div>
     </div>`;
   }).join('');
@@ -367,7 +367,7 @@ function drawSpendTrendChart(months, cats, monthlyByCategory, monthlyTotals) {
     ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
     ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
-    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+    ctx.fillText(fmt(v), pad.l - 6, yy + 4);
   }
 
   // Month labels
@@ -461,7 +461,7 @@ function renderIncomeVsSpending() {
     </div>
     <div class="ivs-metric">
       <div class="ivs-metric-label">Avg Surplus / mo</div>
-      <div class="ivs-metric-val" style="color:${totalNet >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(Math.round(totalNet / months.length))}</div>
+      <div class="ivs-metric-val" style="color:${totalNet >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(totalNet / months.length)}</div>
     </div>
     <div class="ivs-metric">
       <div class="ivs-metric-label">Savings Rate</div>
@@ -501,7 +501,7 @@ function drawIncomeVsSpendingChart(months, mInc, mOut, mNet) {
     ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
     ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
-    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+    ctx.fillText(fmt(v), pad.l - 6, yy + 4);
   }
 
   // Bars
@@ -590,7 +590,7 @@ function renderUpcomingCommitments() {
       <div class="upcoming-month">${mLabel(u.month)}</div>
       <div class="upcoming-name">${u.name}</div>
       <div class="upcoming-cat">${u.category}</div>
-      <div class="upcoming-amt">${fmt(Math.round(u.amount))}</div>
+      <div class="upcoming-amt">${fmt(u.amount)}</div>
     </div>
   `).join('');
 }
@@ -646,18 +646,18 @@ function renderBudgetVsActuals() {
     const barWidth = Math.min(Math.round((r.actual / maxVal) * 100), 100);
     const budgetWidth = r.budget > 0 ? Math.min(Math.round((r.budget / maxVal) * 100), 100) : 0;
     const diffClass = r.diff > 0 ? 'bva-over' : 'bva-under';
-    const diffLabel = r.diff > 0 ? `+${fmt(Math.round(r.diff))} over` : r.diff < 0 ? `${fmt(Math.round(Math.abs(r.diff)))} under` : 'on budget';
+    const diffLabel = r.diff > 0 ? `+${fmt(r.diff)} over` : r.diff < 0 ? `${fmt(Math.abs(r.diff))} under` : 'on budget';
 
     return `<div class="bva-row">
       <div class="bva-cat">${r.cat}</div>
       <div class="bva-bar-wrap">
         <div class="bva-bar-track">
           <div class="bva-bar-fill" style="width:${barWidth}%;background:${barColor}"></div>
-          ${budgetWidth > 0 ? `<div style="position:absolute;left:${budgetWidth}%;top:0;bottom:0;width:2px;background:var(--dim);opacity:.4" title="Budget: ${fmt(Math.round(r.budget))}"></div>` : ''}
+          ${budgetWidth > 0 ? `<div style="position:absolute;left:${budgetWidth}%;top:0;bottom:0;width:2px;background:var(--dim);opacity:.4" title="Budget: ${fmt(r.budget)}"></div>` : ''}
         </div>
       </div>
       <div class="bva-vals">
-        ${fmt(Math.round(r.actual))} / ${r.budget > 0 ? fmt(Math.round(r.budget)) : '—'}
+        ${fmt(r.actual)} / ${r.budget > 0 ? fmt(r.budget) : '—'}
         <span class="${diffClass}" style="display:block;font-size:10px">${diffLabel}</span>
       </div>
     </div>`;
@@ -675,10 +675,10 @@ function renderSavings() {
 
   document.getElementById('sav-sv-open').textContent = fmt(S.savings.startValue);
   document.getElementById('sav-ss-open').textContent = mLabel(S.startMonth);
-  document.getElementById('sav-sv-contrib').textContent = fmt(Math.round(totalContrib));
-  document.getElementById('sav-sv-growth').textContent = fmt(Math.round(totalGrowth));
+  document.getElementById('sav-sv-contrib').textContent = fmt(totalContrib);
+  document.getElementById('sav-sv-growth').textContent = fmt(totalGrowth);
   document.getElementById('sav-ss-growth').textContent = S.savings.growthPct + '% p.a.';
-  document.getElementById('sav-sv-end').textContent = fmt(Math.round(finalBal));
+  document.getElementById('sav-sv-end').textContent = fmt(finalBal);
   document.getElementById('sav-ss-end').textContent = mLabel(endM);
   document.getElementById('sav-chart-title').textContent = `Savings Growth — ${mLabel(S.startMonth)} → ${mLabel(endM)}`;
 
@@ -698,11 +698,11 @@ function renderSavingsAnnual(d) {
     const grw = ms.reduce((s, x) => s + d.growth[x.i], 0);
     const opening = runBal;
     runBal += contrib + grw;
-    h += `<tr><td>${yr}</td><td>${fmt(Math.round(opening))}</td><td class="cp">+${fmt(Math.round(contrib))}</td><td class="cg">+${fmt(Math.round(grw))}</td><td style="color:var(--gold);font-weight:600">${fmt(Math.round(runBal))}</td></tr>`;
+    h += `<tr><td>${yr}</td><td>${fmt(opening)}</td><td class="cp">+${fmt(contrib)}</td><td class="cg">+${fmt(grw)}</td><td style="color:var(--gold);font-weight:600">${fmt(runBal)}</td></tr>`;
   });
   const totalC = d.contribs.reduce((a, b) => a + b, 0);
   const totalG = d.growth.reduce((a, b) => a + b, 0);
-  h += `<tr><td>Total</td><td>${fmt(Math.round(S.savings.startValue))}</td><td class="cp">+${fmt(Math.round(totalC))}</td><td class="cg">+${fmt(Math.round(totalG))}</td><td>${fmt(Math.round(d.bals[d.bals.length - 1]))}</td></tr>`;
+  h += `<tr><td>Total</td><td>${fmt(S.savings.startValue)}</td><td class="cp">+${fmt(totalC)}</td><td class="cg">+${fmt(totalG)}</td><td>${fmt(d.bals[d.bals.length - 1])}</td></tr>`;
   h += '</tbody>';
   document.getElementById('sat').innerHTML = h;
 }
@@ -715,9 +715,9 @@ function renderSavingsMonthly(d) {
   MONTHS.forEach((m, i) => {
     h += `<tr><td>${mLabel(m)}</td>`;
     d.items.forEach(item => h += `<td class="cp">${amt(item, m) > 0 ? fmt(amt(item, m)) : '—'}</td>`);
-    h += `<td class="cp" style="font-weight:600">${d.contribs[i] > 0 ? fmt(Math.round(d.contribs[i])) : '—'}</td>`;
-    h += `<td class="cg">${d.growth[i] > 0.01 ? '+' + fmt(Math.round(d.growth[i])) : '—'}</td>`;
-    h += `<td style="color:var(--gold);font-weight:600">${fmt(Math.round(d.bals[i]))}</td>`;
+    h += `<td class="cp" style="font-weight:600">${d.contribs[i] > 0 ? fmt(d.contribs[i]) : '—'}</td>`;
+    h += `<td class="cg">${d.growth[i] > 0.01 ? '+' + fmt(d.growth[i]) : '—'}</td>`;
+    h += `<td style="color:var(--gold);font-weight:600">${fmt(d.bals[i])}</td>`;
     h += '</tr>';
   });
   h += '</tbody>';
@@ -733,7 +733,7 @@ function renderSavingsItems(items) {
   el.innerHTML = items.map(item => {
     const totalInPeriod = MONTHS.reduce((s, m) => s + amt(item, m), 0);
     const ovrCount = Object.keys(item.overrides || {}).length;
-    return `<div class="sav-item-row"><div class="sav-item-name">${item.name}</div><div class="sav-item-base">${item.base > 0 ? fmt(item.base) + '/mo' : 'variable'}</div><div class="sav-item-note">${ovrCount} override${ovrCount === 1 ? '' : 's'} · Total in period: ${fmt(Math.round(totalInPeriod))}</div></div>`;
+    return `<div class="sav-item-row"><div class="sav-item-name">${item.name}</div><div class="sav-item-base">${item.base > 0 ? fmt(item.base) + '/mo' : 'variable'}</div><div class="sav-item-note">${ovrCount} override${ovrCount === 1 ? '' : 's'} · Total in period: ${fmt(totalInPeriod)}</div></div>`;
   }).join('');
 }
 
@@ -766,7 +766,7 @@ function renderForecast() {
     });
   });
   h += `<tr class="tot-row"><td>Total Income</td>`;
-  d.inc.forEach(v => h += `<td class="cp">${fmt(Math.round(v), false)}</td>`);
+  d.inc.forEach(v => h += `<td class="cp">${fmt(v, false)}</td>`);
   h += '</tr>';
 
   h += `<tr class="grp"><td colspan="${MONTHS.length + 1}">OUTGOINGS</td></tr>`;
@@ -782,13 +782,13 @@ function renderForecast() {
     });
   });
   h += `<tr class="tot-row"><td>Total Outgoings</td>`;
-  d.out.forEach(v => h += `<td class="cn">${fmt(Math.round(v), false)}</td>`);
+  d.out.forEach(v => h += `<td class="cn">${fmt(v, false)}</td>`);
   h += '</tr>';
   h += `<tr class="tot-row"><td>Monthly Net</td>`;
-  d.net.forEach(v => h += `<td style="color:${v < 0 ? 'var(--red)' : 'var(--green)'}">${fmt(Math.round(v), false)}</td>`);
+  d.net.forEach(v => h += `<td style="color:${v < 0 ? 'var(--red)' : 'var(--green)'}">${fmt(v, false)}</td>`);
   h += '</tr>';
   h += `<tr class="bal-row"><td style="color:var(--gold);font-weight:700">Running Balance</td>`;
-  d.bals.forEach(v => h += `<td style="color:${v < 0 ? 'var(--red)' : 'var(--gold)'}">${fmt(Math.round(v))}</td>`);
+  d.bals.forEach(v => h += `<td style="color:${v < 0 ? 'var(--red)' : 'var(--gold)'}">${fmt(v)}</td>`);
   h += '</tr></tbody>';
   document.getElementById('ft').innerHTML = h;
 }
@@ -830,14 +830,14 @@ function renderList(type) {
   const items = type === 'income' ? S.income : S.outgoings;
   const base = (S.settings && S.settings.currency) || 'GBP';
   const el = document.getElementById(type === 'income' ? 'inc-list' : 'out-list');
-  const FREQ_LABELS = { monthly: 'Monthly', weekly: 'Weekly', fortnightly: 'Fortnightly', quarterly: 'Quarterly', annual: 'Annual', 'one-off': 'One-off' };
+  const FREQ_LABELS = { monthly: 'Monthly', weekly: 'Weekly', fortnightly: 'Fortnightly', quarterly: 'Quarterly', 'bi-annual': 'Bi-Annual', annual: 'Annual', 'one-off': 'One-off' };
   el.innerHTML = items.map(item => {
     const oc = Object.keys(item.overrides || {}).length;
     const isForeign = item.currency && item.currency !== base;
     const freq = item.frequency || 'monthly';
     const freqLabel = FREQ_LABELS[freq] || freq;
     const nativeAmt = (item.base || 0) > 0 ? fmtAs(item.base, item.currency || base) : '—';
-    const perLabel = freq === 'weekly' ? '/wk' : freq === 'fortnightly' ? '/2wk' : freq === 'quarterly' ? '/qtr' : freq === 'annual' ? '/yr' : freq === 'one-off' ? '' : '/mo';
+    const perLabel = freq === 'weekly' ? '/wk' : freq === 'fortnightly' ? '/2wk' : freq === 'quarterly' ? '/qtr' : freq === 'bi-annual' ? '/×2yr' : freq === 'annual' ? '/yr' : freq === 'one-off' ? '' : '/mo';
     const convertedAmt = isForeign && (item.base || 0) > 0
       ? ` → ${fmt(item.base * xrate(item.currency))}`
       : '';
@@ -907,12 +907,12 @@ function updateFreqUI() {
   const hint = document.getElementById('mod-freq-hint');
   const label = document.getElementById('mod-base-label');
 
-  const needsMonth = (freq === 'quarterly' || freq === 'annual');
+  const needsMonth = (freq === 'quarterly' || freq === 'bi-annual' || freq === 'annual');
   monthSel.style.display = needsMonth ? '' : 'none';
 
   const labels = {
     monthly: 'Amount Per Month', weekly: 'Amount Per Week', fortnightly: 'Amount Per Fortnight',
-    quarterly: 'Amount Per Quarter', annual: 'Amount Per Year', 'one-off': 'One-off Amount'
+    quarterly: 'Amount Per Quarter', 'bi-annual': 'Amount Per Occurrence', annual: 'Amount Per Year', 'one-off': 'One-off Amount'
   };
   label.textContent = labels[freq] || 'Amount';
 
@@ -920,6 +920,7 @@ function updateFreqUI() {
     weekly: 'Converted to ~4.33× per month in forecast',
     fortnightly: 'Converted to ~2.17× per month in forecast',
     quarterly: 'Applied every 3 months starting from selected month',
+    'bi-annual': 'Applied twice a year — in selected month and 6 months later',
     annual: 'Applied once per year in selected month',
     'one-off': 'Use overrides to set the specific month'
   };
@@ -987,7 +988,7 @@ function saveItem() {
   const itemCur = document.getElementById('mod-currency').value;
   const baseCur = (S.settings && S.settings.currency) || 'GBP';
   const freq = document.getElementById('mod-freq').value;
-  const freqMonth = (freq === 'quarterly' || freq === 'annual') ? +document.getElementById('mod-freq-month').value : undefined;
+  const freqMonth = (freq === 'quarterly' || freq === 'bi-annual' || freq === 'annual') ? +document.getElementById('mod-freq-month').value : undefined;
   if (!name) return alert('Please enter a name.');
   document.querySelectorAll('#ovr-list .ov').forEach(inp => { const v = parseFloat(inp.value); if (!isNaN(v)) _mOvr[inp.dataset.m] = v; });
   const items = type === 'income' ? S.income : S.outgoings;
@@ -1287,9 +1288,9 @@ function renderVinted() {
   const avgPerSale = sales.length > 0 ? Math.round(totalAll / sales.length) : 0;
 
   document.getElementById('vin-stats').innerHTML = `
-    <div class="sc"><div class="sl">This Month</div><div class="sv pos">${fmt(Math.round(thisMonthTotal))}</div><div class="ss">${sales.filter(s => s.date.startsWith(thisMonth)).length} sales</div></div>
-    <div class="sc"><div class="sl">This Year</div><div class="sv pos">${fmt(Math.round(thisYearTotal))}</div><div class="ss">${sales.filter(s => s.date.startsWith(thisYear)).length} sales</div></div>
-    <div class="sc"><div class="sl">All Time</div><div class="sv gld">${fmt(Math.round(totalAll))}</div><div class="ss">${sales.length} sales</div></div>
+    <div class="sc"><div class="sl">This Month</div><div class="sv pos">${fmt(thisMonthTotal)}</div><div class="ss">${sales.filter(s => s.date.startsWith(thisMonth)).length} sales</div></div>
+    <div class="sc"><div class="sl">This Year</div><div class="sv pos">${fmt(thisYearTotal)}</div><div class="ss">${sales.filter(s => s.date.startsWith(thisYear)).length} sales</div></div>
+    <div class="sc"><div class="sl">All Time</div><div class="sv gld">${fmt(totalAll)}</div><div class="ss">${sales.length} sales</div></div>
     <div class="sc"><div class="sl">Avg Per Sale</div><div class="sv">${fmt(avgPerSale)}</div><div class="ss">${sellers.length} seller${sellers.length === 1 ? '' : 's'}</div></div>
   `;
 
@@ -1367,7 +1368,7 @@ function drawVintedChart(sales, rangeMonths) {
     ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
     ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
-    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+    ctx.fillText(fmt(v), pad.l - 6, yy + 4);
   }
 
   // Bars
@@ -1580,9 +1581,9 @@ function renderCombinedStats(summary) {
   return `
     <div class="stats" style="margin-bottom:16px">
       <div class="sc"><div class="sl">Total Shares</div><div class="sv">${summary.totalShares.toLocaleString()}</div><div class="ss">${summary.totalLots} lot${summary.totalLots === 1 ? '' : 's'} across ${summary.totalPortfolios} portfolio${summary.totalPortfolios === 1 ? '' : 's'}</div></div>
-      <div class="sc"><div class="sl">Market Value</div><div class="sv cp">${fmt(Math.round(summary.totalMarketBase))}</div><div class="ss">Combined in base currency</div></div>
-      <div class="sc"><div class="sl">Gain</div><div class="sv ${summary.totalGainBase < 0 ? 'cn' : 'cp'}">${fmt(Math.round(summary.totalGainBase))}</div><div class="ss">Unrealised across all lots</div></div>
-      <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${summary.totalNetBase < 0 ? 'cn' : 'cp'}">${fmt(Math.round(summary.totalNetBase))}</div><div class="ss">After each portfolio’s tax settings</div></div>
+      <div class="sc"><div class="sl">Market Value</div><div class="sv cp">${fmt(summary.totalMarketBase)}</div><div class="ss">Combined in base currency</div></div>
+      <div class="sc"><div class="sl">Gain</div><div class="sv ${summary.totalGainBase < 0 ? 'cn' : 'cp'}">${fmt(summary.totalGainBase)}</div><div class="ss">Unrealised across all lots</div></div>
+      <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${summary.totalNetBase < 0 ? 'cn' : 'cp'}">${fmt(summary.totalNetBase)}</div><div class="ss">After each portfolio’s tax settings</div></div>
     </div>
   `;
 }
@@ -1609,9 +1610,9 @@ function renderPortfolioStats(summary) {
       </div>
       <div class="stats">
         <div class="sc"><div class="sl">Shares</div><div class="sv">${totalShares.toLocaleString()}</div><div class="ss">${lots.length} lot${lots.length === 1 ? '' : 's'}</div></div>
-        <div class="sc"><div class="sl">Market Value</div><div class="sv cp">${fmtAs(Math.round(totalMarket), pf.currency || baseCur)}</div><div class="ss">${showBase ? `≈ ${fmt(Math.round(totalMarket * rate))}` : `@ ${priceText}/share`}</div></div>
-        <div class="sc"><div class="sl">Gain</div><div class="sv ${totalGain < 0 ? 'cn' : 'cp'}">${fmtAs(Math.round(totalGain), pf.currency || baseCur)}</div><div class="ss">${returnPct}</div></div>
-        <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${totalNet < 0 ? 'cn' : 'cp'}">${fmtAs(Math.round(totalNet), pf.currency || baseCur)}</div><div class="ss">${rates.totalPct}% tax (${rates.incomeTaxPct}% + ${rates.socialChargesPct}%)</div></div>
+        <div class="sc"><div class="sl">Market Value</div><div class="sv cp">${fmtAs(totalMarket, pf.currency || baseCur)}</div><div class="ss">${showBase ? `≈ ${fmt(totalMarket * rate)}` : `@ ${priceText}/share`}</div></div>
+        <div class="sc"><div class="sl">Gain</div><div class="sv ${totalGain < 0 ? 'cn' : 'cp'}">${fmtAs(totalGain, pf.currency || baseCur)}</div><div class="ss">${returnPct}</div></div>
+        <div class="sc"><div class="sl">Net After CGT</div><div class="sv ${totalNet < 0 ? 'cn' : 'cp'}">${fmtAs(totalNet, pf.currency || baseCur)}</div><div class="ss">${rates.totalPct}% tax (${rates.incomeTaxPct}% + ${rates.socialChargesPct}%)</div></div>
       </div>
     </div>
   `;
@@ -1690,9 +1691,9 @@ function renderCombinedLotsTable(summary) {
           <td>${escHtml(row.lot.label || '—')}</td>
           <td>${row.shares.toLocaleString()}</td>
           <td>${fmtAs(row.grantPrice, nativeCode)}</td>
-          <td>${fmtAs(Math.round(row.market), nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(row.marketBase))}</span>` : ''}</td>
-          <td class="${row.gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(row.gain), nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(row.gainBase))}</span>` : ''}</td>
-          <td class="${row.net >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(row.net), nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(row.netBase))}</span>` : ''}</td>
+          <td>${fmtAs(row.market, nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(row.marketBase)}</span>` : ''}</td>
+          <td class="${row.gain >= 0 ? 'cp' : 'cn'}">${fmtAs(row.gain, nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(row.gainBase)}</span>` : ''}</td>
+          <td class="${row.net >= 0 ? 'cp' : 'cn'}">${fmtAs(row.net, nativeCode)}${showBase ? `<br><span class="ss">≈ ${fmt(row.netBase)}</span>` : ''}</td>
         </tr>
       `;
     }).join('')
@@ -1714,9 +1715,9 @@ function renderCombinedLotsTable(summary) {
                 <td colspan="3">Combined total</td>
                 <td>${summary.totalShares.toLocaleString()}</td>
                 <td>—</td>
-                <td>${fmt(Math.round(summary.totalMarketBase))}</td>
-                <td class="${summary.totalGainBase >= 0 ? 'cp' : 'cn'}">${fmt(Math.round(summary.totalGainBase))}</td>
-                <td class="${summary.totalNetBase >= 0 ? 'cp' : 'cn'}">${fmt(Math.round(summary.totalNetBase))}</td>
+                <td>${fmt(summary.totalMarketBase)}</td>
+                <td class="${summary.totalGainBase >= 0 ? 'cp' : 'cn'}">${fmt(summary.totalGainBase)}</td>
+                <td class="${summary.totalNetBase >= 0 ? 'cp' : 'cn'}">${fmt(summary.totalNetBase)}</td>
               </tr>
             ` : ''}
           </tbody>
@@ -1738,12 +1739,12 @@ function renderPortfolioLotsTable(summary) {
           <td>${escHtml(lot.label || '—')}</td>
           <td>${shares.toLocaleString()}</td>
           <td>${fmtAs(grantPrice, pf.currency || baseCur)}</td>
-          <td>${fmtAs(Math.round(cost), pf.currency || baseCur)}</td>
-          <td class="cp">${fmtAs(Math.round(market), pf.currency || baseCur)}</td>
-          <td class="${gain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(gain), pf.currency || baseCur)}</td>
-          <td class="cn">${tax.incomeTax > 0 ? '-' + fmtAs(Math.round(tax.incomeTax), pf.currency || baseCur) : '—'}</td>
-          <td class="cn">${tax.socialCharges > 0 ? '-' + fmtAs(Math.round(tax.socialCharges), pf.currency || baseCur) : '—'}</td>
-          <td>${fmtAs(Math.round(net), pf.currency || baseCur)}</td>
+          <td>${fmtAs(cost, pf.currency || baseCur)}</td>
+          <td class="cp">${fmtAs(market, pf.currency || baseCur)}</td>
+          <td class="${gain >= 0 ? 'cp' : 'cn'}">${fmtAs(gain, pf.currency || baseCur)}</td>
+          <td class="cn">${tax.incomeTax > 0 ? '-' + fmtAs(tax.incomeTax, pf.currency || baseCur) : '—'}</td>
+          <td class="cn">${tax.socialCharges > 0 ? '-' + fmtAs(tax.socialCharges, pf.currency || baseCur) : '—'}</td>
+          <td>${fmtAs(net, pf.currency || baseCur)}</td>
           <td><button class="sh-del" onclick="deleteShareLot('${pf.id}','${lot.id}')" title="Delete">✕</button></td>
         </tr>
       `).join('')
@@ -1766,12 +1767,12 @@ function renderPortfolioLotsTable(summary) {
                 <td>${lots.length} lot${lots.length === 1 ? '' : 's'}</td>
                 <td>${totalShares.toLocaleString()}</td>
                 <td>—</td>
-                <td>${fmtAs(Math.round(totalCost), pf.currency || baseCur)}</td>
-                <td>${fmtAs(Math.round(totalMarket), pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(totalMarket * rate))}</span>` : ''}</td>
-                <td class="${totalGain >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(totalGain), pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(totalGain * rate))}</span>` : ''}</td>
-                <td>${totalIncomeTax > 0 ? '-' + fmtAs(Math.round(totalIncomeTax), pf.currency || baseCur) : '—'}</td>
-                <td>${totalSocialCharges > 0 ? '-' + fmtAs(Math.round(totalSocialCharges), pf.currency || baseCur) : '—'}</td>
-                <td class="${totalNet >= 0 ? 'cp' : 'cn'}">${fmtAs(Math.round(totalNet), pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(Math.round(totalNet * rate))}</span>` : ''}</td>
+                <td>${fmtAs(totalCost, pf.currency || baseCur)}</td>
+                <td>${fmtAs(totalMarket, pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(totalMarket * rate)}</span>` : ''}</td>
+                <td class="${totalGain >= 0 ? 'cp' : 'cn'}">${fmtAs(totalGain, pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(totalGain * rate)}</span>` : ''}</td>
+                <td>${totalIncomeTax > 0 ? '-' + fmtAs(totalIncomeTax, pf.currency || baseCur) : '—'}</td>
+                <td>${totalSocialCharges > 0 ? '-' + fmtAs(totalSocialCharges, pf.currency || baseCur) : '—'}</td>
+                <td class="${totalNet >= 0 ? 'cp' : 'cn'}">${fmtAs(totalNet, pf.currency || baseCur)}${showBase ? `<br><span class="ss">≈ ${fmt(totalNet * rate)}</span>` : ''}</td>
                 <td></td>
               </tr>
             ` : ''}
@@ -2014,7 +2015,7 @@ function drawCombinedValueChart() {
     ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
     ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
-    ctx.fillText(fmt(Math.round(v2)), pad.l - 6, yy + 4);
+    ctx.fillText(fmt(v2), pad.l - 6, yy + 4);
   }
 
   // Zero line
@@ -2776,9 +2777,9 @@ function renderLog() {
   const mOut = mTxs.filter(t => t.type === 'outgoing').reduce((s, t) => s + txAmt(t), 0);
   const mNet = mInc - mOut;
   document.getElementById('log-summary').innerHTML = `
-    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Income</div><div class="sv pos">${fmt(Math.round(mInc))}</div><div class="ss">${mTxs.filter(t => t.type === 'income').length} entries</div></div>
-    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Outgoings</div><div class="sv neg">${fmt(Math.round(mOut))}</div><div class="ss">${mTxs.filter(t => t.type === 'outgoing').length} entries</div></div>
-    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Net</div><div class="sv ${mNet < 0 ? 'neg' : 'pos'}">${fmt(Math.round(mNet))}</div><div class="ss">${mTxs.length} total entries</div></div>
+    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Income</div><div class="sv pos">${fmt(mInc)}</div><div class="ss">${mTxs.filter(t => t.type === 'income').length} entries</div></div>
+    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Outgoings</div><div class="sv neg">${fmt(mOut)}</div><div class="ss">${mTxs.filter(t => t.type === 'outgoing').length} entries</div></div>
+    <div class="sc"><div class="sl">${mLabel(summaryMonth)} Net</div><div class="sv ${mNet < 0 ? 'neg' : 'pos'}">${fmt(mNet)}</div><div class="ss">${mTxs.length} total entries</div></div>
   `;
 
   // Transaction list — show native currency + conversion if foreign
@@ -2793,7 +2794,7 @@ function renderLog() {
   list.innerHTML = filtered.map(tx => {
     const isForeign = tx.currency && tx.currency !== baseCur;
     const nativeAmt = isForeign ? fmtAs(tx.amount, tx.currency) : fmt(tx.amount);
-    const convertedAmt = isForeign ? ` → ${fmt(Math.round(txAmt(tx)))}` : '';
+    const convertedAmt = isForeign ? ` → ${fmt(txAmt(tx))}` : '';
     return `<div class="log-row">
     <div class="log-date">${tx.date}</div>
     <div class="log-desc">${tx.name}</div>
