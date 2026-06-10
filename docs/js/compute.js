@@ -315,6 +315,12 @@ function currencySymbol() {
 // ─────────────────────────────────────────────
 // TRANSACTIONS — actual logged entries
 // ─────────────────────────────────────────────
+
+// Transaction amount converted to base currency
+function txAmt(tx) {
+  return (tx.amount || 0) * xrate(tx.currency);
+}
+
 function todayYYYYMM() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -327,15 +333,13 @@ function todayISO() {
 // Compute actual balance from transactions up to a given month
 function computeActuals() {
   const txs = (S.transactions || []).slice().sort((a, b) => a.date.localeCompare(b.date));
-  // Group by YYYY-MM
   const byMonth = {};
   for (const tx of txs) {
     const m = tx.date.slice(0, 7);
     if (!byMonth[m]) byMonth[m] = { inc: 0, out: 0 };
-    if (tx.type === 'income') byMonth[m].inc += (tx.amount || 0);
-    else byMonth[m].out += (tx.amount || 0);
+    if (tx.type === 'income') byMonth[m].inc += txAmt(tx);
+    else byMonth[m].out += txAmt(tx);
   }
-  // Build running balance across MONTHS
   let bal = S.startingBalance;
   const inc = [], out = [], net = [], bals = [];
   for (const m of MONTHS) {
@@ -353,7 +357,7 @@ function computeActuals() {
 function currentMonthActuals() {
   const cm = todayYYYYMM();
   const txs = (S.transactions || []).filter(tx => tx.date.startsWith(cm));
-  const inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
-  const out = txs.filter(t => t.type === 'outgoing').reduce((s, t) => s + (t.amount || 0), 0);
+  const inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + txAmt(t), 0);
+  const out = txs.filter(t => t.type === 'outgoing').reduce((s, t) => s + txAmt(t), 0);
   return { inc, out, net: inc - out, count: txs.length, month: cm };
 }

@@ -83,7 +83,26 @@ jobs:
               }
             }
 
-            if (updated === 0) { console.log('No prices updated'); return; }
+            if (updated === 0) { console.log('No prices updated'); }
+
+            // Fetch exchange rates (EUR/GBP/USD) via frankfurter.app
+            const baseCur = (data.settings && data.settings.currency) || 'EUR';
+            const fxCurrencies = ['EUR', 'GBP', 'USD', 'CHF', 'SEK', 'DKK', 'NOK'].filter(c => c !== baseCur);
+            try {
+              const fxResp = await fetch(`https://api.frankfurter.app/latest?from=${baseCur}&to=${fxCurrencies.join(',')}`);
+              if (fxResp.ok) {
+                const fxData = await fxResp.json();
+                if (!data.settings) data.settings = {};
+                if (!data.settings.exchangeRates) data.settings.exchangeRates = {};
+                for (const [code, rate] of Object.entries(fxData.rates)) {
+                  data.settings.exchangeRates[code] = +(1 / rate).toFixed(6);
+                }
+                data.settings.ratesLastUpdated = new Date().toISOString();
+                console.log(`✓ Exchange rates updated: ${Object.entries(fxData.rates).map(([c,r]) => `1 ${c} = ${(1/r).toFixed(4)} ${baseCur}`).join(', ')}`);
+              }
+            } catch (fxErr) {
+              console.log(`⚠ Exchange rate fetch failed: ${fxErr.message}`);
+            }
 
             // Write back to Gist
             data._lastSaved = new Date().toISOString();

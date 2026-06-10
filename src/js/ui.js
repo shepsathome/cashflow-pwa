@@ -45,11 +45,10 @@ function renderDash() {
   const cm = currentMonthActuals();
   const txs = S.transactions || [];
   // Actual balance = starting balance + all transaction net
-  const actualBal = S.startingBalance + txs.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+  const actualBal = S.startingBalance + txs.reduce((s, t) => s + (t.type === 'income' ? txAmt(t) : -txAmt(t)), 0);
 
   document.getElementById('chart-title').textContent = `Running Balance — ${mLabel(S.startMonth)} → ${mLabel(endM)}`;
 
-  // Current balance (from transactions)
   const svAct = document.getElementById('sv-actual');
   svAct.textContent = fmt(Math.round(actualBal));
   svAct.className = 'sv ' + (actualBal < 0 ? 'neg' : 'pos');
@@ -57,20 +56,18 @@ function renderDash() {
     ? `From ${txs.length} transaction${txs.length === 1 ? '' : 's'}`
     : 'No transactions logged yet';
 
-  // Balance (Start of Month) — starting balance + transactions before this month
   const curMonth = todayYYYYMM();
   const priorTxNet = txs.filter(t => t.date.slice(0, 7) < curMonth)
-    .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+    .reduce((s, t) => s + (t.type === 'income' ? txAmt(t) : -txAmt(t)), 0);
   const startOfMonthBal = S.startingBalance + priorTxNet;
   const svSoM = document.getElementById('sv-start-month');
   svSoM.textContent = fmt(Math.round(startOfMonthBal));
   svSoM.className = 'sv ' + (startOfMonthBal < 0 ? 'neg' : 'gld');
   document.getElementById('ss-start-month').textContent = mLabel(curMonth);
 
-  // Balance (Start of Year) — starting balance + transactions before this year
   const curYear = new Date().getFullYear().toString();
   const priorYearTxNet = txs.filter(t => t.date.slice(0, 4) < curYear)
-    .reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0);
+    .reduce((s, t) => s + (t.type === 'income' ? txAmt(t) : -txAmt(t)), 0);
   const startOfYearBal = S.startingBalance + priorYearTxNet;
   const svSoY = document.getElementById('sv-start-year');
   svSoY.textContent = fmt(Math.round(startOfYearBal));
@@ -236,7 +233,7 @@ function renderSpendingBreakdown() {
     if (useActuals) {
       for (const tx of txs) {
         const cat = tx.category || 'Uncategorised';
-        catAmounts[cat] = (catAmounts[cat] || 0) + (tx.amount || 0);
+        catAmounts[cat] = (catAmounts[cat] || 0) + txAmt(tx);
       }
     } else {
       for (const item of S.outgoings) {
@@ -436,8 +433,8 @@ function renderIncomeVsSpending() {
     const hasTx = txs.length > 0;
     let inc, out;
     if (hasTx) {
-      inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + (t.amount || 0), 0);
-      out = txs.filter(t => t.type === 'outgoing').reduce((s, t) => s + (t.amount || 0), 0);
+      inc = txs.filter(t => t.type === 'income').reduce((s, t) => s + txAmt(t), 0);
+      out = txs.filter(t => t.type === 'outgoing').reduce((s, t) => s + txAmt(t), 0);
     } else {
       inc = S.income.reduce((s, item) => s + amt(item, m), 0);
       out = S.outgoings.reduce((s, item) => s + amt(item, m), 0);
@@ -628,7 +625,7 @@ function renderBudgetVsActuals() {
   const actuals = {};
   for (const tx of txs) {
     const cat = tx.category || 'Uncategorised';
-    actuals[cat] = (actuals[cat] || 0) + (tx.amount || 0);
+    actuals[cat] = (actuals[cat] || 0) + txAmt(tx);
   }
 
   // Merge categories
@@ -2703,6 +2700,8 @@ function addTransaction() {
   const desc = document.getElementById('log-desc').value.trim();
   const amount = parseFloat(document.getElementById('log-amt').value) || 0;
   const cat = document.getElementById('log-cat').value.trim();
+  const cur = document.getElementById('log-cur').value;
+  const baseCur = (S.settings && S.settings.currency) || 'EUR';
   if (!date) return alert('Please select a date.');
   if (!desc) return alert('Please enter a description.');
   if (amount <= 0) return alert('Please enter a positive amount.');
@@ -2713,10 +2712,10 @@ function addTransaction() {
     name: desc,
     amount,
     type: _logType,
-    category: cat || 'Uncategorised'
+    category: cat || 'Uncategorised',
+    currency: cur !== baseCur ? cur : undefined
   });
   markDirty();
-  // Clear form (keep date)
   document.getElementById('log-desc').value = '';
   document.getElementById('log-amt').value = '';
   document.getElementById('log-cat').value = '';
@@ -2731,11 +2730,24 @@ function deleteTransaction(id) {
 }
 
 function renderLog() {
+  const baseCur = (S.settings && S.settings.currency) || 'EUR';
+
   // Set default date to today
   const dateInput = document.getElementById('log-date');
   if (!dateInput.value) dateInput.value = todayISO();
 
-  // Populate category datalist — predefined + any custom categories from data
+  // Populate currency dropdown (common currencies first, then all)
+  const curSel = document.getElementById('log-cur');
+  const commonCurs = [baseCur, 'EUR', 'GBP', 'USD'];
+  const uniqueCommon = [...new Set(commonCurs)];
+  const curVal = curSel.value || baseCur;
+  curSel.innerHTML = uniqueCommon.map(code =>
+    `<option value="${code}" ${code === curVal ? 'selected' : ''}>${code}</option>`
+  ).join('') + Object.keys(CURRENCIES).filter(c => !uniqueCommon.includes(c)).map(code =>
+    `<option value="${code}" ${code === curVal ? 'selected' : ''}>${code}</option>`
+  ).join('');
+
+  // Populate category datalist
   const allCats = new Set([...CATEGORIES.income, ...CATEGORIES.outgoing]);
   [...S.income, ...S.outgoings].forEach(i => { if (i.category) allCats.add(i.category); });
   (S.transactions || []).forEach(t => { if (t.category) allCats.add(t.category); });
@@ -2757,11 +2769,11 @@ function renderLog() {
   if (curFilter && curFilter !== 'all') filtered = filtered.filter(t => t.date.startsWith(curFilter));
   if (typeFilter !== 'all') filtered = filtered.filter(t => t.type === typeFilter);
 
-  // Summary cards
+  // Summary cards — use converted amounts
   const summaryMonth = (curFilter && curFilter !== 'all') ? curFilter : todayYYYYMM();
   const mTxs = txs.filter(t => t.date.startsWith(summaryMonth));
-  const mInc = mTxs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const mOut = mTxs.filter(t => t.type === 'outgoing').reduce((s, t) => s + t.amount, 0);
+  const mInc = mTxs.filter(t => t.type === 'income').reduce((s, t) => s + txAmt(t), 0);
+  const mOut = mTxs.filter(t => t.type === 'outgoing').reduce((s, t) => s + txAmt(t), 0);
   const mNet = mInc - mOut;
   document.getElementById('log-summary').innerHTML = `
     <div class="sc"><div class="sl">${mLabel(summaryMonth)} Income</div><div class="sv pos">${fmt(Math.round(mInc))}</div><div class="ss">${mTxs.filter(t => t.type === 'income').length} entries</div></div>
@@ -2769,7 +2781,7 @@ function renderLog() {
     <div class="sc"><div class="sl">${mLabel(summaryMonth)} Net</div><div class="sv ${mNet < 0 ? 'neg' : 'pos'}">${fmt(Math.round(mNet))}</div><div class="ss">${mTxs.length} total entries</div></div>
   `;
 
-  // Transaction list
+  // Transaction list — show native currency + conversion if foreign
   const list = document.getElementById('log-list');
   const empty = document.getElementById('log-empty');
   if (filtered.length === 0) {
@@ -2778,11 +2790,16 @@ function renderLog() {
     return;
   }
   empty.style.display = 'none';
-  list.innerHTML = filtered.map(tx => `<div class="log-row">
+  list.innerHTML = filtered.map(tx => {
+    const isForeign = tx.currency && tx.currency !== baseCur;
+    const nativeAmt = isForeign ? fmtAs(tx.amount, tx.currency) : fmt(tx.amount);
+    const convertedAmt = isForeign ? ` → ${fmt(Math.round(txAmt(tx)))}` : '';
+    return `<div class="log-row">
     <div class="log-date">${tx.date}</div>
     <div class="log-desc">${tx.name}</div>
-    <div class="log-cat">${tx.category || ''}</div>
-    <div class="log-amt ${tx.type === 'income' ? 'cp' : 'cn'}">${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)}</div>
+    <div class="log-cat">${tx.category || ''}${isForeign ? ` <span style="font-size:9px;color:var(--gold)">${tx.currency}</span>` : ''}</div>
+    <div class="log-amt ${tx.type === 'income' ? 'cp' : 'cn'}">${tx.type === 'income' ? '+' : '-'}${nativeAmt}${convertedAmt ? `<span style="font-size:10px;color:var(--dim);font-weight:400">${convertedAmt}</span>` : ''}</div>
     <button class="log-del" onclick="deleteTransaction('${tx.id}')" title="Delete">✕</button>
-  </div>`).join('');
+  </div>`;
+  }).join('');
 }

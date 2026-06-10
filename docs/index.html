@@ -194,8 +194,11 @@
             <input type="text" class="fi" id="log-desc" placeholder="e.g. Weekly shop, Salary June…" style="height:36px">
           </div>
           <div class="sf">
-            <label>Amount (<span class="cur-sym">£</span>)</label>
-            <input type="number" class="si si-num" id="log-amt" step="0.01" min="0" placeholder="0.00">
+            <label>Amount</label>
+            <div class="sf-row">
+              <select class="si" id="log-cur" style="width:72px" onchange="updateLogAmtLabel()"></select>
+              <input type="number" class="si si-num" id="log-amt" step="0.01" min="0" placeholder="0.00">
+            </div>
           </div>
         </div>
         <div class="log-form-row">
