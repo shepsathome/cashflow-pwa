@@ -154,7 +154,16 @@ async function gistRead() {
   if (!_gistPAT || !_gistId) return null;
   const gist = await gistAPI('GET', `/gists/${_gistId}`);
   const file = gist.files && gist.files['cashflow-data.json'];
-  if (!file || !file.content) return null;
+  if (!file) return null;
+  // If content is truncated, fetch the full file via raw_url
+  if (file.truncated && file.raw_url) {
+    const resp = await fetch(file.raw_url, {
+      headers: { 'Authorization': `token ${_gistPAT}` }
+    });
+    if (!resp.ok) return null;
+    return resp.json();
+  }
+  if (!file.content) return null;
   return JSON.parse(file.content);
 }
 
