@@ -319,9 +319,13 @@ function pfNeedsFetch(pf) {
   if (!pf || !pf.ticker) return false;
   const history = pf.priceHistory || [];
   if (history.length === 0) return true;
-  const latest = history[history.length - 1];
-  const age = Date.now() - new Date(latest.date + 'T23:59:59').getTime();
-  return age > 24 * 60 * 60 * 1000;
+  // Gate on the last successful NETWORK fetch, not the newest history date.
+  // autoCacheSharePrice() stamps today's date with the cached currentPrice; keying
+  // freshness off history dates let that stale stamp masquerade as fresh market data,
+  // which froze prices forever. Refresh if never fetched or >6h since last fetch.
+  const last = pf.pricesFetchedAt ? new Date(pf.pricesFetchedAt).getTime() : 0;
+  if (!last) return true;
+  return (Date.now() - last) > 6 * 60 * 60 * 1000;
 }
 
 function sharesNeedsFetch() {

@@ -174,6 +174,7 @@ async function refreshMarketData() {
     for (const h of r.history) existing.set(h.date, h);
     pf.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
     if (r.currentPrice) pf.currentPrice = r.currentPrice;
+    pf.pricesFetchedAt = Date.now();
     updated++;
   }
   if (updated > 0) markDirty();
@@ -2499,6 +2500,7 @@ async function autoFetchShareHistory() {
     pf.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
     if (result.currentPrice) pf.currentPrice = result.currentPrice;
     if (result.currency) pf.currency = result.currency;
+    pf.pricesFetchedAt = Date.now();
     updated++;
   }
 
@@ -2691,6 +2693,7 @@ function handleShareCSV(input, pfId) {
           for (const point of result.history) existing.set(point.date, point);
           pf.priceHistory = [...existing.values()].sort((a, b) => a.date.localeCompare(b.date));
           if (result.currentPrice) pf.currentPrice = result.currentPrice;
+          pf.pricesFetchedAt = Date.now();
           markDirty();
           resolved = resolveGrantPrices(parsed);
         }
