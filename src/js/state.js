@@ -32,6 +32,7 @@ function migrateState() {
   }
   if (!S.portfolios) S.portfolios = [];
   if (!S.vintedSales) S.vintedSales = [];
+  if (!S.emergencyFund) S.emergencyFund = deep(DEFAULTS.emergencyFund);
 }
 
 function load() {

@@ -84,6 +84,84 @@ function computeSavings() {
 }
 
 // ─────────────────────────────────────────────
+// EMERGENCY FUND — 3–6 months of essential expenses
+// ─────────────────────────────────────────────
+
+// 12 calendar months starting from the current month (for a representative annual view)
+function ef12Months() {
+  const d = new Date();
+  let y = d.getFullYear(), mo = d.getMonth() + 1;
+  const arr = [];
+  for (let i = 0; i < 12; i++) {
+    arr.push(`${y}-${String(mo).padStart(2, '0')}`);
+    mo++; if (mo > 12) { mo = 1; y++; }
+  }
+  return arr;
+}
+
+// Monthly-equivalent cost of a recurring outgoing in base currency —
+// averages the real amount (incl. frequency + overrides + FX) across a rolling 12 months.
+function itemMonthlyEquiv(item) {
+  const ms = ef12Months();
+  return ms.reduce((s, m) => s + amt(item, m), 0) / 12;
+}
+
+function efIsSavingsCat(cat) {
+  const c = (cat || '').toLowerCase();
+  return c.includes('saving') || c.includes('investment');
+}
+
+function efConfig() {
+  if (!S.emergencyFund) S.emergencyFund = deep(DEFAULTS.emergencyFund);
+  return S.emergencyFund;
+}
+
+// The recurring outgoings that count towards "essential monthly expenses"
+function efEssentialItems() {
+  const ef = efConfig();
+  if (ef.expenseMode === 'items') {
+    const ids = new Set(ef.essentialItemIds || []);
+    return (S.outgoings || []).filter(i => ids.has(i.id));
+  }
+  // 'auto' — everything except savings/investment contributions
+  return (S.outgoings || []).filter(i => !efIsSavingsCat(i.category));
+}
+
+function efMonthlyExpense() {
+  const ef = efConfig();
+  if (ef.expenseMode === 'manual') return ef.manualMonthlyExpense || 0;
+  return efEssentialItems().reduce((s, i) => s + itemMonthlyEquiv(i), 0);
+}
+
+function efCurrentAmount() {
+  const ef = efConfig();
+  return ef.fundSource === 'savings' ? (S.savings.startValue || 0) : (ef.currentAmount || 0);
+}
+
+// Milestone status from the number of months currently covered
+function efStatus(monthsCovered, targetMonths) {
+  if (monthsCovered >= targetMonths) return { key: 'funded', label: 'Fully funded', color: 'var(--green)' };
+  if (monthsCovered >= 6) return { key: 'strong', label: 'Strong security (6+ months)', color: 'var(--green)' };
+  if (monthsCovered >= 3) return { key: 'basic', label: 'Basic security (3+ months)', color: 'var(--gold)' };
+  if (monthsCovered >= 1) return { key: 'starter', label: 'Starter buffer (1+ month)', color: 'var(--amber)' };
+  return { key: 'building', label: 'Getting started', color: 'var(--red)' };
+}
+
+function computeEmergencyFund() {
+  const ef = efConfig();
+  const targetMonths = ef.targetMonths || 6;
+  const monthly = efMonthlyExpense();
+  const target = monthly * targetMonths;
+  const current = efCurrentAmount();
+  const monthsCovered = monthly > 0 ? current / monthly : 0;
+  const pct = target > 0 ? Math.min(current / target, 1) : 0;
+  const gap = Math.max(0, target - current);
+  const surplus = Math.max(0, current - target);
+  return { targetMonths, monthly, target, current, monthsCovered, pct, gap, surplus,
+    status: efStatus(monthsCovered, targetMonths) };
+}
+
+// ─────────────────────────────────────────────
 // EXCHANGE RATE FETCHING (frankfurter.app — free, no key)
 // ─────────────────────────────────────────────
 async function fetchExchangeRates() {

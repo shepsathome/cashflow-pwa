@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // DEFAULT DATA & MONTH HELPERS
 // ─────────────────────────────────────────────
-const APP_VERSION = '2026.06.11.2';
+const APP_VERSION = '2026.07.04.1';
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function buildMonths(startYYYYMM, years) {
@@ -89,6 +89,15 @@ const DEFAULTS = {
     ratesLastUpdated: null   // ISO timestamp of last fetch
   },
   savings: { startValue: 8000, growthPct: 4.5 },
+  // Emergency fund — 3–6 months of essential expenses (Rebel Finance School / Ramsey / JL Collins)
+  emergencyFund: {
+    targetMonths: 6,          // 3 = basic security, 6 = strong (default), 12 = variable income
+    expenseMode: 'auto',      // 'auto' (all non-savings outgoings) | 'items' | 'manual'
+    essentialItemIds: [],     // outgoing item ids counted when expenseMode === 'items'
+    manualMonthlyExpense: 0,  // used when expenseMode === 'manual'
+    fundSource: 'manual',     // 'manual' | 'savings' (link to current savings balance)
+    currentAmount: 5000       // amount saved so far when fundSource === 'manual'
+  },
   portfolios: [],
   income: [
     { id: 'salary_1', name: 'Salary — Partner 1', category: 'Salaries', base: 3500, overrides: {} },

@@ -25,6 +25,7 @@ function showTab(name, el) {
   if (name === 'log') renderLog();
   if (name === 'forecast') renderForecast();
   if (name === 'savings') renderSavings();
+  if (name === 'emergency') renderEmergency();
   if (name === 'recurring') renderItems();
   if (name === 'shares') renderShares();
   if (name === 'vinted') renderVinted();
@@ -34,6 +35,7 @@ function showTab(name, el) {
 // DASHBOARD
 function renderDash() {
   if (!MONTHS.length) return;
+  renderEmergencyDash();
   const d = compute();
   const minBal = Math.min(...d.bals), minI = d.bals.indexOf(minBal);
   const endBal = d.bals[d.bals.length - 1];
@@ -737,6 +739,173 @@ function renderSavingsItems(items) {
   }).join('');
 }
 
+// ─────────────────────────────────────────────
+// EMERGENCY FUND
+// ─────────────────────────────────────────────
+function renderEmergency() {
+  const ef = efConfig();
+  const c = computeEmergencyFund();
+
+  // Hero
+  document.getElementById('ef-months').textContent = c.monthsCovered.toFixed(1);
+  const badge = document.getElementById('ef-badge');
+  badge.textContent = c.status.label;
+  badge.style.background = c.status.color;
+
+  // Progress bar — scaled so the target and the 1/3/6 milestones are all visible
+  const scaleMonths = Math.max(c.targetMonths, 6);
+  const fill = document.getElementById('ef-fill');
+  fill.style.width = Math.min(c.monthsCovered / scaleMonths, 1) * 100 + '%';
+  fill.style.background = c.monthsCovered >= c.targetMonths
+    ? 'linear-gradient(90deg,var(--green),#1aa34a)'
+    : 'linear-gradient(90deg,var(--gold),var(--gold-l))';
+
+  const markMonths = [...new Set([1, 3, 6, c.targetMonths])].filter(m => m <= scaleMonths).sort((a, b) => a - b);
+  document.getElementById('ef-marks').innerHTML = markMonths
+    .map(m => `<div class="ef-mark" style="left:calc(${(m / scaleMonths * 100).toFixed(2)}% - 1px)"></div>`).join('');
+  document.getElementById('ef-marks-lbls').innerHTML = markMonths
+    .map(m => `<div class="ef-mark-lbl${m === c.targetMonths ? ' on' : ''}" style="left:${(m / scaleMonths * 100).toFixed(2)}%">${m}mo</div>`).join('');
+
+  document.getElementById('ef-foot-current').textContent = fmt(c.current);
+  document.getElementById('ef-foot-target').textContent = fmt(c.target);
+  const foot = document.getElementById('ef-foot-gap');
+  foot.textContent = c.gap > 0 ? `${fmt(c.gap)} to go` : `${fmt(c.surplus)} surplus ✓`;
+  foot.style.color = c.gap > 0 ? 'var(--dim)' : 'var(--green)';
+
+  // Stat cards
+  document.getElementById('ef-sv-current').textContent = fmt(c.current);
+  document.getElementById('ef-ss-current').textContent = ef.fundSource === 'savings' ? 'Linked to Savings balance' : 'Manually entered';
+  document.getElementById('ef-sv-monthly').textContent = fmt(c.monthly);
+  document.getElementById('ef-ss-monthly').textContent = ef.expenseMode === 'manual' ? 'Manually entered'
+    : ef.expenseMode === 'items' ? `${efEssentialItems().length} chosen items` : 'All non-savings outgoings';
+  document.getElementById('ef-sv-tmonths').textContent = c.targetMonths;
+  document.getElementById('ef-sv-target').textContent = fmt(c.target);
+  document.getElementById('ef-ss-target').textContent = `${c.targetMonths} × monthly essentials`;
+  const gapLbl = document.getElementById('ef-sl-gap');
+  const gapVal = document.getElementById('ef-sv-gap');
+  const gapSub = document.getElementById('ef-ss-gap');
+  if (c.gap > 0) {
+    gapLbl.textContent = 'Still to Save';
+    gapVal.textContent = fmt(c.gap);
+    gapVal.className = 'sv neg';
+    gapSub.textContent = `${(c.pct * 100).toFixed(0)}% of target reached`;
+  } else {
+    gapLbl.textContent = 'Surplus Above Target';
+    gapVal.textContent = fmt(c.surplus);
+    gapVal.className = 'sv pos';
+    gapSub.textContent = 'Target fully funded';
+  }
+
+  // Config controls reflect state
+  document.getElementById('ef-months-input').value = ef.targetMonths;
+  document.querySelectorAll('#tab-emergency .ef-preset').forEach(b =>
+    b.classList.toggle('on', +b.dataset.m === ef.targetMonths));
+
+  setSegActive('ef-source-seg', ef.fundSource);
+  document.getElementById('ef-current-input').value = ef.currentAmount || 0;
+  document.getElementById('ef-current-wrap').style.display = ef.fundSource === 'manual' ? '' : 'none';
+  document.getElementById('ef-savings-note').style.display = ef.fundSource === 'savings' ? '' : 'none';
+
+  setSegActive('ef-expense-seg', ef.expenseMode);
+  document.getElementById('ef-manual-wrap').style.display = ef.expenseMode === 'manual' ? '' : 'none';
+  document.getElementById('ef-manual-input').value = ef.manualMonthlyExpense || 0;
+  document.getElementById('ef-item-picker').style.display = ef.expenseMode === 'items' ? '' : 'none';
+  const hints = {
+    auto: 'Counts every recurring outgoing except Savings & Investments — a conservative "total spending" figure.',
+    items: 'Tick the recurring outgoings that are true essentials (rent, food, utilities, insurance, transport…).',
+    manual: 'Enter your own monthly essentials figure if you\'d rather not derive it from recurring items.'
+  };
+  document.getElementById('ef-expense-hint').textContent = hints[ef.expenseMode] || '';
+
+  if (ef.expenseMode === 'items') renderEfItemPicker();
+  renderEfItemsBody(c);
+  updateCurrencyLabels();
+}
+
+function renderEfItemPicker() {
+  const ef = efConfig();
+  const ids = new Set(ef.essentialItemIds || []);
+  const items = (S.outgoings || []).slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  document.getElementById('ef-item-picker').innerHTML = items.map(i =>
+    `<label class="ef-pick${ids.has(i.id) ? ' on' : ''}">
+      <input type="checkbox" ${ids.has(i.id) ? 'checked' : ''} onchange="toggleEfItem('${i.id}')">
+      <span class="ef-pick-name">${i.name}</span>
+      <span class="ef-pick-cat">${i.category || ''}</span>
+      <span class="ef-pick-amt">${fmt(itemMonthlyEquiv(i))}/mo</span>
+    </label>`).join('') || '<div class="sav-empty">No recurring outgoings yet — add some on the Recurring tab.</div>';
+}
+
+function renderEfItemsBody(c) {
+  const items = efConfig().expenseMode === 'manual' ? [] : efEssentialItems();
+  const body = document.getElementById('ef-items-body');
+  if (efConfig().expenseMode === 'manual') {
+    body.innerHTML = `<div class="sav-empty">Using a manually entered figure of <strong>${fmt(c.monthly)}</strong>/month.</div>`;
+    return;
+  }
+  if (!items.length) {
+    body.innerHTML = '<div class="sav-empty">No essential expenses selected.</div>';
+    return;
+  }
+  const rows = items.map(i => ({ i, m: itemMonthlyEquiv(i) })).sort((a, b) => b.m - a.m);
+  body.innerHTML = rows.map(r =>
+    `<div class="sav-item-row"><div class="sav-item-name">${r.i.name}</div><div class="sav-item-base">${r.i.category || ''}</div><div class="sav-item-note" style="color:var(--text);font-weight:600">${fmt(r.m)}/mo</div></div>`
+  ).join('') +
+    `<div class="sav-item-row" style="background:var(--s2)"><div class="sav-item-name" style="font-weight:700">Total monthly essentials</div><div class="sav-item-base"></div><div class="sav-item-note" style="color:var(--gold);font-weight:700">${fmt(c.monthly)}/mo</div></div>`;
+}
+
+function renderEmergencyDash() {
+  const el = document.getElementById('ef-dash-months');
+  if (!el) return;
+  const c = computeEmergencyFund();
+  document.getElementById('ef-dash-months').textContent = c.monthsCovered.toFixed(1);
+  document.getElementById('ef-dash-status').textContent = c.status.label;
+  document.getElementById('ef-dash-status').style.color = c.status.color;
+  const scaleMonths = Math.max(c.targetMonths, 6);
+  const df = document.getElementById('ef-dash-fill');
+  df.style.width = Math.min(c.monthsCovered / scaleMonths, 1) * 100 + '%';
+  df.style.background = c.monthsCovered >= c.targetMonths ? 'var(--green)' : 'var(--gold)';
+  document.getElementById('ef-dash-current').textContent = fmt(c.current);
+  document.getElementById('ef-dash-target').textContent = fmt(c.target);
+  document.getElementById('ef-dash-tmonths').textContent = c.targetMonths;
+}
+
+// ─── Config handlers ───
+function setSegActive(segId, val) {
+  document.querySelectorAll('#' + segId + ' .ef-seg-btn').forEach(b =>
+    b.classList.toggle('on', b.dataset.v === val));
+}
+
+function setEfMonths(m) { efConfig().targetMonths = m; markDirty(); renderEmergency(); }
+
+function setEfSource(v) { efConfig().fundSource = v; markDirty(); renderEmergency(); }
+
+function setEfExpenseMode(v) {
+  const ef = efConfig();
+  // Seed the item picker with the auto set the first time the user chooses "items"
+  if (v === 'items' && (!ef.essentialItemIds || ef.essentialItemIds.length === 0)) {
+    ef.essentialItemIds = (S.outgoings || []).filter(i => !efIsSavingsCat(i.category)).map(i => i.id);
+  }
+  ef.expenseMode = v;
+  markDirty(); renderEmergency();
+}
+
+function toggleEfItem(id) {
+  const ef = efConfig();
+  const set = new Set(ef.essentialItemIds || []);
+  if (set.has(id)) set.delete(id); else set.add(id);
+  ef.essentialItemIds = [...set];
+  markDirty(); renderEmergency();
+}
+
+function applyEfCfg() {
+  const ef = efConfig();
+  const tm = parseInt(document.getElementById('ef-months-input').value);
+  if (tm && tm > 0) ef.targetMonths = Math.min(tm, 36);
+  ef.currentAmount = parseFloat(document.getElementById('ef-current-input').value) || 0;
+  ef.manualMonthlyExpense = parseFloat(document.getElementById('ef-manual-input').value) || 0;
+  markDirty(); renderEmergency();
+}
+
 // FORECAST
 function renderForecast() {
   if (!MONTHS.length) return;
@@ -1019,6 +1188,7 @@ function renderAll() {
   if (document.getElementById('tab-log').classList.contains('on')) renderLog();
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
+  if (document.getElementById('tab-emergency').classList.contains('on')) renderEmergency();
   if (document.getElementById('tab-recurring').classList.contains('on')) renderItems();
   if (document.getElementById('tab-shares').classList.contains('on')) renderShares();
   if (document.getElementById('tab-vinted').classList.contains('on')) renderVinted();

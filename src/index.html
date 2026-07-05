@@ -34,6 +34,7 @@
     <div class="ntab" onclick="showTab('log',this)">Log</div>
     <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
     <div class="ntab" onclick="showTab('savings',this)">Savings</div>
+    <div class="ntab" onclick="showTab('emergency',this)">Emergency Fund</div>
     <div class="ntab" onclick="showTab('shares',this)">Shares</div>
     <div class="ntab" onclick="showTab('vinted',this)">Vinted</div>
     <div class="ntab" onclick="showTab('recurring',this)">Recurring</div>
@@ -59,6 +60,23 @@
       <div class="nw-refresh">
         <button class="nw-refresh-btn" onclick="refreshMarketData()" id="nw-refresh-btn" title="Refresh market data">⟳</button>
         <div class="nw-updated" id="nw-updated">—</div>
+      </div>
+    </div>
+
+    <!-- EMERGENCY FUND READINESS -->
+    <div class="ef-dash" onclick="showTab('emergency',document.querySelectorAll('.ntab')[4])" title="Open Emergency Fund">
+      <div class="ef-dash-left">
+        <div class="ef-dash-label">Emergency Fund</div>
+        <div class="ef-dash-months"><span id="ef-dash-months">0.0</span><span class="ef-dash-unit">months covered</span></div>
+        <div class="ef-dash-status" id="ef-dash-status">—</div>
+      </div>
+      <div class="ef-dash-right">
+        <div class="ef-track ef-track-sm">
+          <div class="ef-fill" id="ef-dash-fill" style="width:0%"></div>
+          <div class="ef-mark" style="left:calc(16.67% - 1px)"></div>
+          <div class="ef-mark" style="left:calc(50% - 1px)"></div>
+        </div>
+        <div class="ef-dash-target"><span id="ef-dash-current">£0</span> of <span id="ef-dash-target">£0</span> · <span id="ef-dash-tmonths">6</span>-month target</div>
       </div>
     </div>
 
@@ -309,7 +327,110 @@
 
   </div>
 
-  <!-- SHARES -->
+  <!-- EMERGENCY FUND -->
+  <div class="panel" id="tab-emergency">
+
+    <!-- HERO -->
+    <div class="card ef-hero">
+      <div class="ef-hero-top">
+        <div>
+          <div class="card-title" style="margin-bottom:6px">Emergency Fund Readiness</div>
+          <div class="ef-hero-months"><span id="ef-months">0.0</span> <span class="ef-hero-unit">months of essential expenses covered</span></div>
+        </div>
+        <div class="ef-badge" id="ef-badge">—</div>
+      </div>
+
+      <div class="ef-bar-wrap">
+        <div class="ef-track">
+          <div class="ef-fill" id="ef-fill" style="width:0%"></div>
+          <div class="ef-marks" id="ef-marks"></div>
+        </div>
+        <div class="ef-marks-lbls" id="ef-marks-lbls"></div>
+      </div>
+
+      <div class="ef-hero-foot">
+        <span><strong id="ef-foot-current">£0</strong> saved</span>
+        <span id="ef-foot-gap">—</span>
+        <span><strong id="ef-foot-target">£0</strong> target</span>
+      </div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="sav-stats">
+      <div class="sc"><div class="sl">Current Fund</div><div class="sv gld" id="ef-sv-current">£0</div><div class="ss" id="ef-ss-current">—</div></div>
+      <div class="sc"><div class="sl">Monthly Essential Expenses</div><div class="sv" id="ef-sv-monthly">£0</div><div class="ss" id="ef-ss-monthly">—</div></div>
+      <div class="sc"><div class="sl">Target (<span id="ef-sv-tmonths">6</span> months)</div><div class="sv gld" id="ef-sv-target">£0</div><div class="ss" id="ef-ss-target">—</div></div>
+      <div class="sc"><div class="sl" id="ef-sl-gap">Still to Save</div><div class="sv" id="ef-sv-gap">£0</div><div class="ss" id="ef-ss-gap">—</div></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="card">
+      <div class="card-title">Configure Your Target</div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">How many months do you want to cover?</label>
+        <div class="ef-preset-row">
+          <button class="btn ef-preset" data-m="3" onclick="setEfMonths(3)">3 months<span>Basic</span></button>
+          <button class="btn ef-preset" data-m="6" onclick="setEfMonths(6)">6 months<span>Recommended</span></button>
+          <button class="btn ef-preset" data-m="9" onclick="setEfMonths(9)">9 months<span>Cautious</span></button>
+          <button class="btn ef-preset" data-m="12" onclick="setEfMonths(12)">12 months<span>Variable income</span></button>
+        </div>
+        <div class="sf" style="margin-top:10px">
+          <label>Custom (months)</label>
+          <input type="number" class="si si-num" style="width:110px" id="ef-months-input" min="1" max="36" step="1" onchange="applyEfCfg()">
+        </div>
+      </div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">How much have you saved for emergencies?</label>
+        <div class="ef-seg" id="ef-source-seg">
+          <button class="ef-seg-btn" data-v="manual" onclick="setEfSource('manual')">Enter amount</button>
+          <button class="ef-seg-btn" data-v="savings" onclick="setEfSource('savings')">Use Savings balance</button>
+        </div>
+        <div class="sf" id="ef-current-wrap" style="margin-top:10px">
+          <label>Current emergency fund (<span class="cur-sym">£</span>)</label>
+          <input type="number" class="si si-num" id="ef-current-input" step="0.01" min="0" placeholder="0.00" onchange="applyEfCfg()">
+        </div>
+        <div class="settings-note" id="ef-savings-note" style="display:none;margin-top:8px">Linked to your <strong style="color:var(--gold)">Savings</strong> opening balance — update it on the Savings tab.</div>
+      </div>
+
+      <div class="ef-cfg-block" style="border-bottom:none;padding-bottom:0">
+        <label class="ef-cfg-label">What counts as an "essential" monthly expense?</label>
+        <div class="ef-seg" id="ef-expense-seg">
+          <button class="ef-seg-btn" data-v="auto" onclick="setEfExpenseMode('auto')">Automatic</button>
+          <button class="ef-seg-btn" data-v="items" onclick="setEfExpenseMode('items')">Choose items</button>
+          <button class="ef-seg-btn" data-v="manual" onclick="setEfExpenseMode('manual')">Enter manually</button>
+        </div>
+        <div class="settings-note" id="ef-expense-hint" style="margin-top:8px"></div>
+        <div class="sf" id="ef-manual-wrap" style="margin-top:10px;display:none">
+          <label>Monthly essential expenses (<span class="cur-sym">£</span>)</label>
+          <input type="number" class="si si-num" id="ef-manual-input" step="0.01" min="0" placeholder="0.00" onchange="applyEfCfg()">
+        </div>
+        <div id="ef-item-picker" class="ef-item-picker" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- CONTRIBUTING ITEMS -->
+    <div class="sav-items-list" id="ef-items-panel">
+      <div class="sav-items-hdr">Essential Expenses Included (monthly equivalent)</div>
+      <div id="ef-items-body"></div>
+    </div>
+
+    <!-- THEORY -->
+    <div class="card ef-theory">
+      <div class="card-title">Why an emergency fund?</div>
+      <p>An emergency fund is cash set aside to cover life's surprises — a job loss, a medical bill, a boiler that dies in winter — <strong>without reaching for debt</strong>. The widely-taught rule is to hold <strong>3 to 6 months of your essential living expenses</strong> in easy-access savings before investing more aggressively.</p>
+      <div class="ef-tiers">
+        <div class="ef-tier"><div class="ef-tier-n">1 month</div><div class="ef-tier-d"><strong>Starter buffer.</strong> A first cushion so a single surprise doesn't go on a credit card.</div></div>
+        <div class="ef-tier"><div class="ef-tier-n">3 months</div><div class="ef-tier-d"><strong>Basic security.</strong> Suitable if you have a stable job or a dual-income household.</div></div>
+        <div class="ef-tier"><div class="ef-tier-n">6 months</div><div class="ef-tier-d"><strong>Strong security.</strong> The common default — gives real breathing room to recover from job loss.</div></div>
+        <div class="ef-tier"><div class="ef-tier-n">12 months</div><div class="ef-tier-d"><strong>Extra caution.</strong> Sensible for a single income, self-employment or variable earnings.</div></div>
+      </div>
+      <p class="ef-sources"><strong>Sources:</strong> Rebel Finance School (Alan &amp; Katie Donegan) — calculate your actual monthly expenses, then hold 3–6× that as a safety net before investing. The same 3–6 month guidance is echoed by Dave Ramsey, JL Collins (<em>The Simple Path to Wealth</em>) and ChooseFI; Suze Orman suggests up to 8–12 months for those with dependants or variable income.</p>
+    </div>
+
+  </div>
+
   <div class="panel" id="tab-shares">
     <div id="sh-auto-status" class="sh-status" style="padding:0 0 12px"></div>
     <div id="sh-view"></div>
