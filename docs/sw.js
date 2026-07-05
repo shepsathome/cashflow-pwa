@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bear-finance-v1';
+const CACHE_NAME = 'bear-finance-2026.07.04.1';
 const APP_SHELL = [
   './',
   './index.html',
@@ -35,7 +35,8 @@ self.addEventListener('activate', event => {
 // Fetch strategy:
 // - API/proxy requests: network only (never cache)
 // - Fonts: network-first with cache fallback
-// - App shell: stale-while-revalidate (serve cache instantly, update in background)
+// - App shell: network-first with cache fallback (always get the latest code online;
+//   fall back to cache only when offline). Prevents stale UI hiding new features/tabs.
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
@@ -63,19 +64,16 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // App shell — stale-while-revalidate
-  // Serve cached version immediately for speed, then fetch update in background
+  // App shell — network-first: fetch the latest, cache it, fall back to cache offline
   event.respondWith(
-    caches.match(event.request).then(cached => {
-      const fetchPromise = fetch(event.request).then(response => {
-        if (response && response.status === 200) {
+    fetch(event.request)
+      .then(response => {
+        if (response && response.status === 200 && event.request.method === 'GET') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => cached);
-
-      return cached || fetchPromise;
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });
