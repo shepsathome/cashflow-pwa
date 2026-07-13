@@ -17,4 +17,5 @@ if (sharesNeedsFetch()) {
 window.addEventListener('resize', () => {
   if (document.getElementById('tab-dashboard').classList.contains('on')) drawChart(compute());
   if (document.getElementById('tab-savings').classList.contains('on')) drawSavingsChart(computeSavings());
+  if (document.getElementById('tab-drawdown').classList.contains('on') && window._ddLast) drawDrawdownChart(window._ddLast);
 });

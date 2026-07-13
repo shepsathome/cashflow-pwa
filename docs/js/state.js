@@ -33,6 +33,16 @@ function migrateState() {
   if (!S.portfolios) S.portfolios = [];
   if (!S.vintedSales) S.vintedSales = [];
   if (!S.emergencyFund) S.emergencyFund = deep(DEFAULTS.emergencyFund);
+  // Drawdown planner — deep-merge so existing users gain any newly added sub-keys
+  if (!S.drawdown) {
+    S.drawdown = deep(DEFAULTS.drawdown);
+  } else {
+    for (const k in DEFAULTS.drawdown) {
+      if (S.drawdown[k] === undefined) S.drawdown[k] = deep(DEFAULTS.drawdown[k]);
+    }
+    if (!S.drawdown.wrappers) S.drawdown.wrappers = deep(DEFAULTS.drawdown.wrappers);
+    if (!S.drawdown.taxRates) S.drawdown.taxRates = deep(DEFAULTS.drawdown.taxRates);
+  }
 }
 
 function load() {

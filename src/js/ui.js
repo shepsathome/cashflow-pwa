@@ -26,6 +26,7 @@ function showTab(name, el) {
   if (name === 'forecast') renderForecast();
   if (name === 'savings') renderSavings();
   if (name === 'emergency') renderEmergency();
+  if (name === 'drawdown') renderDrawdown();
   if (name === 'recurring') renderItems();
   if (name === 'shares') renderShares();
   if (name === 'vinted') renderVinted();
@@ -907,6 +908,232 @@ function applyEfCfg() {
   markDirty(); renderEmergency();
 }
 
+// ─────────────────────────────────────────────
+// DRAWDOWN / FIRE
+// ─────────────────────────────────────────────
+function renderDrawdown() {
+  const dd = ddConfig();
+  const c = computeDrawdown();
+
+  // Hero
+  document.getElementById('dd-success').textContent = Math.round(c.successRate * 100);
+  document.getElementById('dd-horizon-lbl').textContent = dd.horizonAge;
+  const badge = document.getElementById('dd-badge');
+  badge.textContent = c.status.label;
+  badge.style.background = c.status.color;
+  const sub = document.getElementById('dd-hero-sub');
+  if (c.successRate >= 0.9) {
+    sub.innerHTML = `Across ${c.runs.toLocaleString()} simulated market histories, your pot survived to age ${dd.horizonAge} in <strong>${Math.round(c.successRate * 100)}%</strong> of them. The median outcome leaves <strong>${fmt(c.medianEnd)}</strong> at age ${dd.horizonAge}.`;
+  } else {
+    sub.innerHTML = `Across ${c.runs.toLocaleString()} simulated market histories, the pot ran out before age ${dd.horizonAge} in <strong>${Math.round((1 - c.successRate) * 100)}%</strong> of them` +
+      (c.medianDepletionAge ? ` — typically around age <strong>${c.medianDepletionAge}</strong>. Consider a later retirement age, lower spending, or a lower withdrawal rate.` : '.');
+  }
+
+  // Stat cards
+  document.getElementById('dd-sv-pot').textContent = fmt(c.pot0);
+  document.getElementById('dd-ss-pot').textContent = dd.potSource === 'auto' ? 'Savings + shares' + (dd.includeCash ? ' + cash' : '') : 'Manually entered';
+  document.getElementById('dd-sv-fire').textContent = fmt(c.fireNumber);
+  document.getElementById('dd-ss-fire').textContent = `${dd.withdrawalRate}% rule · ${(100 / dd.withdrawalRate).toFixed(0)}× expenses`;
+  document.getElementById('dd-sv-exp').textContent = fmt(c.annualExpense);
+  document.getElementById('dd-ss-exp').textContent = dd.expenseSource === 'auto' ? 'From your outgoings' : 'Manually entered';
+  document.getElementById('dd-sv-sus').textContent = fmt(c.sustainableNet);
+  document.getElementById('dd-ss-sus').textContent = `Net/yr at ${dd.withdrawalRate}% today`;
+
+  // FIRE progress
+  document.getElementById('dd-fire-fill').style.width = (c.fireProgress * 100) + '%';
+  document.getElementById('dd-fire-current').textContent = fmt(c.pot0);
+  document.getElementById('dd-fire-target').textContent = fmt(c.fireNumber);
+  const eta = document.getElementById('dd-fire-eta');
+  if (c.pot0 >= c.fireNumber) eta.textContent = '✓ FIRE number reached';
+  else if (c.yearsToFire != null) eta.textContent = `~${c.yearsToFire} yr${c.yearsToFire === 1 ? '' : 's'} to FIRE (age ${dd.currentAge + c.yearsToFire})`;
+  else eta.textContent = 'Not reached within 100 yrs at these assumptions';
+  eta.style.color = c.pot0 >= c.fireNumber ? 'var(--green)' : 'var(--dim)';
+
+  // Config controls
+  setSegActive('dd-loc-seg', dd.location);
+  setSegActive('dd-pot-seg', dd.potSource);
+  setSegActive('dd-exp-seg', dd.expenseSource);
+  document.getElementById('dd-manualpot').value = dd.manualPot;
+  document.getElementById('dd-manualpot-wrap').style.display = dd.potSource === 'manual' ? '' : 'none';
+  document.getElementById('dd-cash-wrap').style.display = dd.potSource === 'auto' ? '' : 'none';
+  document.getElementById('dd-includecash').checked = !!dd.includeCash;
+  document.getElementById('dd-manualexp').value = dd.manualAnnualExpense;
+  document.getElementById('dd-manualexp-wrap').style.display = dd.expenseSource === 'manual' ? '' : 'none';
+  document.getElementById('dd-exp-hint').textContent = dd.expenseSource === 'auto'
+    ? 'Sum of all recurring outgoings except Savings & Investments, annualised.' : '';
+  document.getElementById('dd-curage').value = dd.currentAge;
+  document.getElementById('dd-retage').value = dd.retireAge;
+  document.getElementById('dd-horage').value = dd.horizonAge;
+  document.getElementById('dd-infl').value = dd.inflationPct;
+  document.getElementById('dd-ret').value = dd.expReturnPct;
+  document.getElementById('dd-vol').value = dd.volatilityPct;
+  document.getElementById('dd-swr').value = dd.withdrawalRate;
+  document.getElementById('dd-contrib').value = dd.annualContribution;
+  document.getElementById('dd-otherinc').value = dd.otherIncome;
+  document.getElementById('dd-otherage').value = dd.otherIncomeStartAge;
+  document.getElementById('dd-gainfrac').value = dd.gainFraction;
+  document.getElementById('dd-runs').value = dd.simRuns;
+
+  renderDdWrappers();
+  renderDdTax(c);
+  drawDrawdownChart(c);
+  window._ddLast = c;
+  updateCurrencyLabels();
+}
+
+function renderDdWrappers() {
+  const dd = ddConfig();
+  const loc = dd.location;
+  document.getElementById('dd-wrap-loc').textContent = '(' + loc + ')';
+  const defs = loc === 'France'
+    ? [['pea', 'PEA'], ['av', 'Assurance Vie'], ['cto', 'CTO (taxable)']]
+    : [['isa', 'ISA'], ['sipp', 'SIPP'], ['gia', 'GIA (taxable)']];
+  const w = dd.wrappers[loc];
+  document.getElementById('dd-wrappers').innerHTML = defs.map(([k, label]) =>
+    `<div class="dd-wrap-row">
+      <span class="dd-wrap-name">${label}</span>
+      <input type="range" min="0" max="100" step="5" value="${w[k]}" class="dd-slider" oninput="setDdWrapper('${k}', this.value)">
+      <span class="dd-wrap-pct" id="dd-wrap-${k}">${w[k]}%</span>
+    </div>`).join('');
+  const total = defs.reduce((s, [k]) => s + (w[k] || 0), 0);
+  const tEl = document.getElementById('dd-wrap-total');
+  tEl.textContent = `Total allocation: ${total}%` + (total !== 100 ? ' — should sum to 100%' : ' ✓');
+  tEl.style.color = total === 100 ? 'var(--green)' : 'var(--amber)';
+}
+
+function renderDdTax(c) {
+  const dd = ddConfig();
+  const prof = drawdownTaxProfile();
+  document.getElementById('dd-tax-loc').textContent = dd.location;
+  document.getElementById('dd-tax-rate').textContent = (prof.effRate * 100).toFixed(1) + '%';
+  document.getElementById('dd-tax-allow').textContent = fmt(prof.allowance) + '/yr';
+  document.getElementById('dd-tax-breakdown').innerHTML = prof.breakdown.map(b =>
+    `<div class="dd-tax-row">
+      <span class="dd-tax-key">${b.key}</span>
+      <span class="dd-tax-alloc">${b.pct}% of pot</span>
+      <span class="dd-tax-rt">${b.rate}% on gains</span>
+      <span class="dd-tax-note">${b.note}</span>
+    </div>`).join('');
+  document.getElementById('dd-tax-sources').innerHTML = dd.location === 'France'
+    ? '<strong>France:</strong> PEA pays only 17.2% social charges on gains after 5 years (PEA-eligible ETFs only). Assurance Vie after 8 years is ≈24.7% with a €4,600 individual gains allowance. A standard CTO is taxed at the PFU flat tax of 31.4% (12.8% income + 18.6% social) from 2025. Rates are editable above.'
+    : '<strong>UK:</strong> ISA and SIPP shelter growth from CGT and dividend tax (SIPP withdrawals beyond the 25% tax-free lump sum are taxed as income — modelled as an effective rate). A GIA is subject to CGT above the ~£3,000 allowance. Rates are editable above.';
+}
+
+// Fan chart — 10th–90th percentile band + median line, retirement marker
+function drawDrawdownChart(c) {
+  const cv = document.getElementById('dd-chart');
+  if (!cv) return;
+  const W = cv.parentElement.clientWidth - 44, H = 300;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const pad = { t: 16, r: 16, b: 40, l: 88 };
+  const dd = ddConfig();
+  const n = c.p50.length;
+  const mx = Math.max(...c.p90, c.pot0, 1) * 1.05, mn = 0;
+  const rng = mx - mn || 1;
+  const px = i => pad.l + (i / Math.max(n - 1, 1)) * (W - pad.l - pad.r);
+  const py = v => pad.t + (1 - (v - mn) / rng) * (H - pad.t - pad.b);
+  const ageAt = i => c.startAge + i;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, W, H);
+
+  // Grid + y labels
+  const steps = 5;
+  for (let i = 0; i <= steps; i++) {
+    const v = mn + rng * i / steps, yy = py(v);
+    ctx.strokeStyle = '#e6eaf1'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad.l, yy); ctx.lineTo(W - pad.r, yy); ctx.stroke();
+    ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Mono",monospace'; ctx.textAlign = 'right';
+    ctx.fillText(fmt(Math.round(v)), pad.l - 6, yy + 4);
+  }
+
+  // Age axis labels (every ~10 yrs)
+  ctx.fillStyle = '#8b9099'; ctx.font = '11px "DM Sans",sans-serif'; ctx.textAlign = 'center';
+  for (let i = 0; i < n; i++) {
+    const age = ageAt(i);
+    if (age % 10 === 0) {
+      ctx.strokeStyle = '#eef1f6'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px(i), pad.t); ctx.lineTo(px(i), H - pad.b); ctx.stroke();
+      ctx.fillText(age, px(i), H - 6);
+    }
+  }
+  ctx.fillStyle = '#6b7585'; ctx.fillText('Age', px(n - 1), H - 22);
+
+  // Retirement marker
+  const retIdx = Math.max(0, Math.min(n - 1, dd.retireAge - c.startAge));
+  ctx.strokeStyle = 'rgba(154,117,32,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 4]);
+  ctx.beginPath(); ctx.moveTo(px(retIdx), pad.t); ctx.lineTo(px(retIdx), H - pad.b); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Percentile band (p10..p90)
+  ctx.beginPath();
+  ctx.moveTo(px(0), py(c.p90[0]));
+  for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(c.p90[i]));
+  for (let i = n - 1; i >= 0; i--) ctx.lineTo(px(i), py(c.p10[i]));
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(29,78,216,.12)'; ctx.fill();
+
+  // p90 & p10 outlines
+  [['p90', 'rgba(29,78,216,.35)'], ['p10', 'rgba(220,38,38,.35)']].forEach(([key, col]) => {
+    ctx.beginPath(); ctx.moveTo(px(0), py(c[key][0]));
+    for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(c[key][i]));
+    ctx.strokeStyle = col; ctx.lineWidth = 1.25; ctx.stroke();
+  });
+
+  // Median line
+  ctx.beginPath(); ctx.moveTo(px(0), py(c.p50[0]));
+  for (let i = 1; i < n; i++) ctx.lineTo(px(i), py(c.p50[i]));
+  ctx.strokeStyle = '#9a7520'; ctx.lineWidth = 2.5; ctx.stroke();
+}
+
+// ─── Drawdown config handlers ───
+function setDdLocation(v) { ddConfig().location = v; markDirty(); renderDrawdown(); }
+function setDdPotSource(v) { ddConfig().potSource = v; markDirty(); renderDrawdown(); }
+function setDdExpenseSource(v) { ddConfig().expenseSource = v; markDirty(); renderDrawdown(); }
+
+function setDdWrapper(key, val) {
+  const dd = ddConfig();
+  dd.wrappers[dd.location][key] = parseInt(val) || 0;
+  document.getElementById('dd-wrap-' + key).textContent = (parseInt(val) || 0) + '%';
+  markDirty();
+  // Light re-render: update totals, tax, chart without rebuilding sliders (keeps drag smooth)
+  const c = computeDrawdown();
+  const defs = dd.location === 'France' ? ['pea', 'av', 'cto'] : ['isa', 'sipp', 'gia'];
+  const total = defs.reduce((s, k) => s + (dd.wrappers[dd.location][k] || 0), 0);
+  const tEl = document.getElementById('dd-wrap-total');
+  tEl.textContent = `Total allocation: ${total}%` + (total !== 100 ? ' — should sum to 100%' : ' ✓');
+  tEl.style.color = total === 100 ? 'var(--green)' : 'var(--amber)';
+  renderDdTax(c);
+  document.getElementById('dd-sv-sus').textContent = fmt(c.sustainableNet);
+  document.getElementById('dd-success').textContent = Math.round(c.successRate * 100);
+  drawDrawdownChart(c);
+}
+
+function applyDdCfg() {
+  const dd = ddConfig();
+  const num = (id, def) => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? def : v; };
+  dd.manualPot = num('dd-manualpot', dd.manualPot);
+  dd.includeCash = document.getElementById('dd-includecash').checked;
+  dd.manualAnnualExpense = num('dd-manualexp', dd.manualAnnualExpense);
+  dd.currentAge = Math.round(num('dd-curage', dd.currentAge));
+  dd.retireAge = Math.round(num('dd-retage', dd.retireAge));
+  dd.horizonAge = Math.round(num('dd-horage', dd.horizonAge));
+  dd.inflationPct = num('dd-infl', dd.inflationPct);
+  dd.expReturnPct = num('dd-ret', dd.expReturnPct);
+  dd.volatilityPct = num('dd-vol', dd.volatilityPct);
+  dd.withdrawalRate = Math.max(0.1, num('dd-swr', dd.withdrawalRate));
+  dd.annualContribution = num('dd-contrib', dd.annualContribution);
+  dd.otherIncome = num('dd-otherinc', dd.otherIncome);
+  dd.otherIncomeStartAge = Math.round(num('dd-otherage', dd.otherIncomeStartAge));
+  dd.gainFraction = Math.max(0, Math.min(100, num('dd-gainfrac', dd.gainFraction)));
+  dd.simRuns = Math.max(100, Math.min(5000, Math.round(num('dd-runs', dd.simRuns))));
+  // Guard against invalid age ordering
+  if (dd.retireAge < dd.currentAge) dd.retireAge = dd.currentAge;
+  if (dd.horizonAge <= dd.retireAge) dd.horizonAge = dd.retireAge + 1;
+  markDirty(); renderDrawdown();
+}
+
 // FORECAST
 function renderForecast() {
   if (!MONTHS.length) return;
@@ -1190,6 +1417,7 @@ function renderAll() {
   if (document.getElementById('tab-forecast').classList.contains('on')) renderForecast();
   if (document.getElementById('tab-savings').classList.contains('on')) renderSavings();
   if (document.getElementById('tab-emergency').classList.contains('on')) renderEmergency();
+  if (document.getElementById('tab-drawdown').classList.contains('on')) renderDrawdown();
   if (document.getElementById('tab-recurring').classList.contains('on')) renderItems();
   if (document.getElementById('tab-shares').classList.contains('on')) renderShares();
   if (document.getElementById('tab-vinted').classList.contains('on')) renderVinted();

@@ -162,6 +162,200 @@ function computeEmergencyFund() {
 }
 
 // ─────────────────────────────────────────────
+// DRAWDOWN / FIRE PLANNER — live off an ETF portfolio drawdown
+// Full Monte Carlo, pure JS. Works in REAL (today's-money) terms:
+// realReturn ~ Normal(expReturn − inflation, volatility); expenses held constant in real terms.
+// ─────────────────────────────────────────────
+
+function ddConfig() {
+  if (!S.drawdown) S.drawdown = deep(DEFAULTS.drawdown);
+  return S.drawdown;
+}
+
+// Current net-of-CGT market value of all share portfolios, in base currency
+function sharesNetBaseNow() {
+  let net = 0;
+  for (const pf of (S.portfolios || [])) {
+    const price = pf.currentPrice || 0;
+    const rate = xrate(pf.currency);
+    const tr = getShareTaxRates(pf);
+    for (const lot of (pf.lots || [])) {
+      const market = (lot.shares || 0) * price;
+      const cost = (lot.shares || 0) * (lot.grantPrice || 0);
+      const gain = market - cost;
+      const tax = gain > 0 ? gain * tr.total : 0;
+      net += (market - tax) * rate;
+    }
+  }
+  return net;
+}
+
+// Current cash balance = starting balance + net of all logged transactions
+function cashBalanceNow() {
+  const txs = S.transactions || [];
+  return S.startingBalance + txs.reduce((s, t) => s + (t.type === 'income' ? txAmt(t) : -txAmt(t)), 0);
+}
+
+// Starting investable pot for the drawdown model
+function drawdownPot() {
+  const dd = ddConfig();
+  if (dd.potSource === 'manual') return dd.manualPot || 0;
+  let pot = (S.savings ? S.savings.startValue : 0) + sharesNetBaseNow();
+  if (dd.includeCash) pot += cashBalanceNow();
+  return pot;
+}
+
+// Annual living expenses in retirement (net needed), base currency
+function drawdownAnnualExpense() {
+  const dd = ddConfig();
+  if (dd.expenseSource === 'manual') return dd.manualAnnualExpense || 0;
+  // All recurring outgoings except savings/investment contributions (you stop those in drawdown)
+  const items = (S.outgoings || []).filter(i => !efIsSavingsCat(i.category));
+  return items.reduce((s, i) => s + itemMonthlyEquiv(i), 0) * 12;
+}
+
+// Effective tax on the gain portion of taxable withdrawals + annual allowance, per jurisdiction
+function drawdownTaxProfile() {
+  const dd = ddConfig();
+  const loc = dd.location;
+  const w = dd.wrappers[loc] || {};
+  const t = dd.taxRates[loc] || {};
+  if (loc === 'France') {
+    const tot = (w.pea + w.av + w.cto) || 1;
+    const effRate = (w.pea * t.peaRate + w.av * t.avRate + w.cto * t.ctoRate) / tot / 100;
+    return {
+      location: loc, effRate, allowance: t.allowance || 0,
+      breakdown: [
+        { key: 'PEA', pct: w.pea, rate: t.peaRate, note: '17.2% social charges only after 5 years (PEA-eligible ETFs)' },
+        { key: 'Assurance Vie', pct: w.av, rate: t.avRate, note: '≈24.7% after 8 years, with a €' + (t.allowance || 0).toLocaleString() + ' annual gains allowance' },
+        { key: 'CTO', pct: w.cto, rate: t.ctoRate, note: 'PFU flat tax 31.4% (12.8% income + 18.6% social, 2025+)' }
+      ]
+    };
+  }
+  const tot = (w.isa + w.sipp + w.gia) || 1;
+  const effRate = (w.isa * t.isaRate + w.sipp * t.sippRate + w.gia * t.giaRate) / tot / 100;
+  return {
+    location: loc, effRate, allowance: t.allowance || 0,
+    breakdown: [
+      { key: 'ISA', pct: w.isa, rate: t.isaRate, note: 'Fully tax-free — no CGT or dividend tax' },
+      { key: 'SIPP', pct: w.sipp, rate: t.sippRate, note: '25% tax-free, remainder taxed as income (modelled as an effective rate)' },
+      { key: 'GIA', pct: w.gia, rate: t.giaRate, note: 'Taxable — CGT above the £' + (t.allowance || 0).toLocaleString() + ' allowance' }
+    ]
+  };
+}
+
+// Gross withdrawal needed to net `net` after tax on the gain portion (iterative — allowance makes it non-linear)
+function grossForNet(net, gainFraction, effRate, allowance) {
+  if (net <= 0) return 0;
+  let gross = net;
+  for (let i = 0; i < 6; i++) {
+    const taxableGain = Math.max(0, gross * gainFraction - allowance);
+    const tax = taxableGain * effRate;
+    gross = net + tax;
+  }
+  return gross;
+}
+
+// Standard normal via Box–Muller
+function gaussian(mean, sd) {
+  let u = 0, v = 0;
+  while (u === 0) u = Math.random();
+  while (v === 0) v = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  return mean + z * sd;
+}
+
+function computeDrawdown() {
+  const dd = ddConfig();
+  const pot0 = drawdownPot();
+  const annualExpense = drawdownAnnualExpense();
+  const realReturn = (dd.expReturnPct - dd.inflationPct) / 100;
+  const vol = dd.volatilityPct / 100;
+  const { effRate, allowance } = drawdownTaxProfile();
+  const gf = (dd.gainFraction || 0) / 100;
+  const startAge = dd.currentAge, retire = dd.retireAge, end = dd.horizonAge;
+  const contrib = dd.annualContribution || 0;
+  const otherInc = dd.otherIncome || 0, otherStart = dd.otherIncomeStartAge;
+  const runs = Math.max(50, Math.min(dd.simRuns || 500, 5000));
+  const years = Math.max(1, end - startAge);
+  const nCols = years + 1;
+
+  // FIRE number (25× at 4%) and deterministic years-to-FIRE in real terms
+  const fireNumber = annualExpense * (100 / (dd.withdrawalRate || 4));
+  let yearsToFire = null;
+  {
+    let pot = pot0;
+    for (let y = 0; y < 100; y++) {
+      if (pot >= fireNumber) { yearsToFire = y; break; }
+      pot = (pot + contrib) * (1 + realReturn);
+    }
+  }
+
+  // Monte Carlo
+  const paths = [];
+  let successes = 0;
+  const depletionAges = [];
+  const endValues = [];
+  for (let r = 0; r < runs; r++) {
+    let pot = pot0;
+    const path = [pot];
+    let depleted = false, depAge = null;
+    for (let y = 0; y < years; y++) {
+      const age = startAge + y;
+      if (age < retire) {
+        pot += contrib;
+      } else {
+        const net = Math.max(0, annualExpense - (age >= otherStart ? otherInc : 0));
+        pot -= grossForNet(net, gf, effRate, allowance);
+      }
+      if (pot <= 0) { pot = 0; if (!depleted) { depleted = true; depAge = age; } }
+      const ret = gaussian(realReturn, vol);
+      pot = pot * (1 + ret);
+      if (pot < 0) pot = 0;
+      path.push(pot);
+    }
+    if (!depleted) successes++; else depletionAges.push(depAge);
+    endValues.push(path[path.length - 1]);
+    paths.push(path);
+  }
+
+  // Percentile fan per year
+  const p10 = [], p50 = [], p90 = [];
+  for (let c = 0; c < nCols; c++) {
+    const col = paths.map(p => p[c]).sort((a, b) => a - b);
+    p10.push(col[Math.floor(runs * 0.10)]);
+    p50.push(col[Math.floor(runs * 0.50)]);
+    p90.push(col[Math.floor(runs * 0.90)]);
+  }
+
+  const successRate = successes / runs;
+  const medianDepletionAge = depletionAges.length
+    ? depletionAges.slice().sort((a, b) => a - b)[Math.floor(depletionAges.length / 2)]
+    : null;
+  const medianEnd = endValues.slice().sort((a, b) => a - b)[Math.floor(runs / 2)];
+
+  // Sustainable spend at the chosen SWR given the current pot (net, today's money)
+  const sustainableGross = pot0 * (dd.withdrawalRate || 4) / 100;
+  const taxOnSustainable = Math.max(0, sustainableGross * gf - allowance) * effRate;
+  const sustainableNet = sustainableGross - taxOnSustainable;
+
+  let status;
+  if (successRate >= 0.90) status = { label: 'On track', color: 'var(--green)', key: 'ok' };
+  else if (successRate >= 0.75) status = { label: 'Borderline', color: 'var(--gold)', key: 'warn' };
+  else if (successRate >= 0.5) status = { label: 'At risk', color: 'var(--amber)', key: 'risk' };
+  else status = { label: 'Unlikely to last', color: 'var(--red)', key: 'fail' };
+
+  return {
+    pot0, annualExpense, realReturn, effRate, allowance, fireNumber, yearsToFire,
+    startAge, retire, end, years, runs,
+    successRate, medianDepletionAge, medianEnd,
+    sustainableNet, sustainableGross,
+    fireProgress: fireNumber > 0 ? Math.min(pot0 / fireNumber, 1) : 0,
+    p10, p50, p90, status
+  };
+}
+
+// ─────────────────────────────────────────────
 // EXCHANGE RATE FETCHING (frankfurter.app — free, no key)
 // ─────────────────────────────────────────────
 async function fetchExchangeRates() {

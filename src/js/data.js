@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // DEFAULT DATA & MONTH HELPERS
 // ─────────────────────────────────────────────
-const APP_VERSION = '2026.07.04.1';
+const APP_VERSION = '2026.07.13.1';
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function buildMonths(startYYYYMM, years) {
@@ -97,6 +97,41 @@ const DEFAULTS = {
     manualMonthlyExpense: 0,  // used when expenseMode === 'manual'
     fundSource: 'manual',     // 'manual' | 'savings' (link to current savings balance)
     currentAmount: 5000       // amount saved so far when fundSource === 'manual'
+  },
+  // Drawdown / FIRE planner — live off an ETF portfolio drawdown (4% rule / 25x, Trinity, Rebel Finance School)
+  drawdown: {
+    location: 'UK',            // 'UK' | 'France' — drives tax wrappers & rates
+    potSource: 'auto',        // 'auto' (current savings + shares net + optional cash) | 'manual'
+    includeCash: false,       // include current cash balance in the auto pot
+    manualPot: 500000,        // starting investable pot when potSource === 'manual'
+    expenseSource: 'auto',    // 'auto' (all non-savings outgoings ×12) | 'manual'
+    manualAnnualExpense: 40000,
+    currentAge: 40,
+    retireAge: 55,            // year drawdown begins
+    horizonAge: 95,           // plan must last until this age
+    inflationPct: 2.5,        // predicted long-run inflation
+    expReturnPct: 7.0,        // expected NOMINAL annual ETF return (real = exp − inflation)
+    volatilityPct: 15.0,      // annual return std-dev for Monte Carlo
+    withdrawalRate: 4.0,      // safe withdrawal rate used for the FIRE number (25× at 4%)
+    annualContribution: 12000,// added each year until retireAge (today's money)
+    otherIncome: 0,           // guaranteed annual income (state/other pension), today's money
+    otherIncomeStartAge: 67,
+    gainFraction: 50,         // % of each withdrawal assumed to be taxable gain vs returned capital
+    simRuns: 1000,            // Monte Carlo iterations
+    // Wrapper allocation (% of pot) per jurisdiction
+    wrappers: {
+      UK:     { isa: 60, sipp: 30, gia: 10 },
+      France: { pea: 50, av: 30, cto: 20 }
+    },
+    // Effective tax rate applied to the GAIN portion of taxable withdrawals + annual allowance
+    taxRates: {
+      // UK: ISA & SIPP treated as sheltered (SIPP has a small effective income-tax drag);
+      // GIA taxed at CGT. Allowance ≈ £3,000 CGT + £500 dividend.
+      UK:     { isaRate: 0, sippRate: 15, giaRate: 20, allowance: 3500 },
+      // France: PEA >5yr = 17.2% social only; Assurance Vie >8yr ≈ 24.7% (€4,600 allowance);
+      // CTO = PFU flat tax 31.4% (12.8% + 18.6% from 2025).
+      France: { peaRate: 17.2, avRate: 24.7, ctoRate: 31.4, allowance: 4600 }
+    }
   },
   portfolios: [],
   income: [

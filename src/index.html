@@ -35,6 +35,7 @@
     <div class="ntab" onclick="showTab('forecast',this)">Forecast</div>
     <div class="ntab" onclick="showTab('savings',this)">Savings</div>
     <div class="ntab" onclick="showTab('emergency',this)">Emergency Fund</div>
+    <div class="ntab" onclick="showTab('drawdown',this)">Drawdown / FIRE</div>
     <div class="ntab" onclick="showTab('shares',this)">Shares</div>
     <div class="ntab" onclick="showTab('vinted',this)">Vinted</div>
     <div class="ntab" onclick="showTab('recurring',this)">Recurring</div>
@@ -431,6 +432,134 @@
 
   </div>
 
+  <!-- DRAWDOWN / FIRE -->
+  <div class="panel" id="tab-drawdown">
+
+    <!-- HERO -->
+    <div class="card ef-hero">
+      <div class="ef-hero-top">
+        <div>
+          <div class="card-title" style="margin-bottom:6px">Portfolio Drawdown — Monte Carlo Plan</div>
+          <div class="ef-hero-months"><span id="dd-success">0</span><span class="ef-hero-unit">% chance your money lasts to age <span id="dd-horizon-lbl">95</span></span></div>
+        </div>
+        <div class="ef-badge" id="dd-badge">—</div>
+      </div>
+      <div class="dd-hero-sub" id="dd-hero-sub">—</div>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="sav-stats">
+      <div class="sc"><div class="sl">Current Investable Pot</div><div class="sv gld" id="dd-sv-pot">£0</div><div class="ss" id="dd-ss-pot">—</div></div>
+      <div class="sc"><div class="sl">FIRE Number</div><div class="sv" id="dd-sv-fire">£0</div><div class="ss" id="dd-ss-fire">—</div></div>
+      <div class="sc"><div class="sl">Annual Expenses</div><div class="sv" id="dd-sv-exp">£0</div><div class="ss" id="dd-ss-exp">—</div></div>
+      <div class="sc"><div class="sl">Sustainable Net Spend</div><div class="sv gld" id="dd-sv-sus">£0</div><div class="ss" id="dd-ss-sus">—</div></div>
+    </div>
+
+    <!-- FIRE PROGRESS -->
+    <div class="card">
+      <div class="card-title">Progress to Financial Independence</div>
+      <div class="ef-track"><div class="ef-fill" id="dd-fire-fill" style="width:0%"></div></div>
+      <div class="ef-hero-foot" style="margin-top:14px">
+        <span><strong id="dd-fire-current">£0</strong> now</span>
+        <span id="dd-fire-eta">—</span>
+        <span><strong id="dd-fire-target">£0</strong> FIRE number</span>
+      </div>
+    </div>
+
+    <!-- FAN CHART -->
+    <div class="card">
+      <div class="card-title" id="dd-chart-title">Projected Portfolio Value (real, today's money)</div>
+      <canvas id="dd-chart"></canvas>
+      <div class="dd-legend">
+        <span><i class="dd-key dd-key-band"></i>10th–90th percentile range</span>
+        <span><i class="dd-key dd-key-median"></i>Median outcome</span>
+        <span><i class="dd-key dd-key-retire"></i>Retirement starts</span>
+      </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="card">
+      <div class="card-title">Configure Your Plan</div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">Where will you be tax-resident in drawdown?</label>
+        <div class="ef-seg" id="dd-loc-seg">
+          <button class="ef-seg-btn" data-v="UK" onclick="setDdLocation('UK')">🇬🇧 United Kingdom</button>
+          <button class="ef-seg-btn" data-v="France" onclick="setDdLocation('France')">🇫🇷 France</button>
+        </div>
+      </div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">Starting investable pot</label>
+        <div class="ef-seg" id="dd-pot-seg">
+          <button class="ef-seg-btn" data-v="auto" onclick="setDdPotSource('auto')">Use my savings + shares</button>
+          <button class="ef-seg-btn" data-v="manual" onclick="setDdPotSource('manual')">Enter manually</button>
+        </div>
+        <div class="dd-grid" style="margin-top:12px">
+          <div class="sf" id="dd-manualpot-wrap"><label>Manual pot (<span class="cur-sym">£</span>)</label><input type="number" class="si si-num" id="dd-manualpot" step="1000" min="0" onchange="applyDdCfg()"></div>
+          <label class="dd-check" id="dd-cash-wrap"><input type="checkbox" id="dd-includecash" onchange="applyDdCfg()"><span>Include current cash balance in the pot</span></label>
+        </div>
+      </div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">Annual living expenses (in drawdown)</label>
+        <div class="ef-seg" id="dd-exp-seg">
+          <button class="ef-seg-btn" data-v="auto" onclick="setDdExpenseSource('auto')">From my outgoings</button>
+          <button class="ef-seg-btn" data-v="manual" onclick="setDdExpenseSource('manual')">Enter manually</button>
+        </div>
+        <div class="sf" id="dd-manualexp-wrap" style="margin-top:12px"><label>Annual expenses (<span class="cur-sym">£</span>)</label><input type="number" class="si si-num" id="dd-manualexp" step="500" min="0" onchange="applyDdCfg()"></div>
+        <div class="settings-note" id="dd-exp-hint" style="margin-top:8px"></div>
+      </div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">Timeline &amp; assumptions</label>
+        <div class="dd-grid">
+          <div class="sf"><label>Current age</label><input type="number" class="si" id="dd-curage" min="18" max="90" step="1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Retire / drawdown age</label><input type="number" class="si" id="dd-retage" min="18" max="90" step="1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Plan until age</label><input type="number" class="si" id="dd-horage" min="60" max="110" step="1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Inflation (%/yr)</label><input type="number" class="si" id="dd-infl" step="0.1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Expected return (%/yr, nominal)</label><input type="number" class="si" id="dd-ret" step="0.1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Volatility (%/yr)</label><input type="number" class="si" id="dd-vol" step="0.5" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Withdrawal rate (%)</label><input type="number" class="si" id="dd-swr" step="0.1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Annual contribution until retirement (<span class="cur-sym">£</span>)</label><input type="number" class="si si-num" id="dd-contrib" step="500" min="0" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Other income (<span class="cur-sym">£</span>/yr, e.g. state pension)</label><input type="number" class="si si-num" id="dd-otherinc" step="500" min="0" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Other income starts at age</label><input type="number" class="si" id="dd-otherage" min="50" max="90" step="1" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Taxable gain fraction (%)</label><input type="number" class="si" id="dd-gainfrac" min="0" max="100" step="5" onchange="applyDdCfg()"></div>
+          <div class="sf"><label>Monte Carlo runs</label><input type="number" class="si" id="dd-runs" min="100" max="5000" step="100" onchange="applyDdCfg()"></div>
+        </div>
+      </div>
+
+      <div class="ef-cfg-block" style="border-bottom:none;padding-bottom:0">
+        <label class="ef-cfg-label">Tax wrapper allocation <span id="dd-wrap-loc" style="color:var(--gold)"></span></label>
+        <div id="dd-wrappers"></div>
+        <div class="settings-note" id="dd-wrap-total" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <!-- TAX CARD -->
+    <div class="card">
+      <div class="card-title">Tax Treatment — <span id="dd-tax-loc" style="color:var(--gold)"></span></div>
+      <div class="dd-tax-eff">Blended effective tax on gains: <strong id="dd-tax-rate">0%</strong> · Annual allowance: <strong id="dd-tax-allow">—</strong></div>
+      <div id="dd-tax-breakdown"></div>
+      <p class="ef-sources" id="dd-tax-sources"></p>
+    </div>
+
+    <!-- THEORY -->
+    <div class="card ef-theory">
+      <div class="card-title">How drawdown &amp; the 4% rule work</div>
+      <p>Once your investments reach roughly <strong>25× your annual spending</strong>, you can begin <strong>drawing down</strong> — selling a slice of your ETF portfolio each year to live on. The classic <strong>4% rule</strong> (from the <em>Trinity Study</em>) suggests withdrawing 4% of the starting pot, rising with inflation, has historically lasted 30+ years. A Monte Carlo simulation stress-tests this against <strong>thousands of randomised market sequences</strong> so you see a probability of success, not a single rosy line.</p>
+      <div class="ef-tiers">
+        <div class="ef-tier"><div class="ef-tier-n">4% / 25×</div><div class="ef-tier-d"><strong>Baseline FIRE.</strong> £40k/yr of spending needs a ~£1,000,000 pot.</div></div>
+        <div class="ef-tier"><div class="ef-tier-n">3.5%</div><div class="ef-tier-d"><strong>Conservative.</strong> Rebel Finance School favours a safer rate for early, long retirements.</div></div>
+        <div class="ef-tier"><div class="ef-tier-n">Sequence risk</div><div class="ef-tier-d"><strong>The real danger.</strong> A crash in the first few drawdown years does the most damage — which Monte Carlo captures.</div></div>
+        <div class="ef-tier"><div class="ef-tier-n">Tax wrappers</div><div class="ef-tier-d"><strong>Keep more.</strong> ISA/SIPP (UK) or PEA/Assurance Vie (France) shelter gains and lift your sustainable spend.</div></div>
+      </div>
+      <p class="ef-sources"><strong>Sources:</strong> Rebel Finance School (Alan &amp; Katie Donegan), the Trinity Study (4% safe withdrawal rate), JL Collins <em>The Simple Path to Wealth</em> and ChooseFI. Tax rules per HMRC (ISA/SIPP/CGT allowances) and French PFU / PEA / Assurance Vie regimes (31.4% flat tax from 2025). This is a planning model, not financial advice.</p>
+    </div>
+
+  </div>
+
+  <!-- SHARES -->
   <div class="panel" id="tab-shares">
     <div id="sh-auto-status" class="sh-status" style="padding:0 0 12px"></div>
     <div id="sh-view"></div>
