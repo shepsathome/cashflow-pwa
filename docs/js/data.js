@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // DEFAULT DATA & MONTH HELPERS
 // ─────────────────────────────────────────────
-const APP_VERSION = '2026.07.13.1';
+const APP_VERSION = '2026.07.13.2';
 const MN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function buildMonths(startYYYYMM, years) {
@@ -114,8 +114,16 @@ const DEFAULTS = {
     volatilityPct: 15.0,      // annual return std-dev for Monte Carlo
     withdrawalRate: 4.0,      // safe withdrawal rate used for the FIRE number (25× at 4%)
     annualContribution: 12000,// added each year until retireAge (today's money)
-    otherIncome: 0,           // guaranteed annual income (state/other pension), today's money
+    otherIncome: 0,           // legacy single stream — superseded by pensions[] (kept for migration)
     otherIncomeStartAge: 67,
+    // Guaranteed income streams (state/DB pensions) — reduce ETF drawdown from startAge
+    pensions: [
+      { id: 'uk_state', name: 'UK State Pension', annualAmount: 11500, startAge: 67, inflationLinked: true, taxRatePct: 0 }
+    ],
+    // Defined-contribution pension pots (workplace / SIPP / PER) — unlock at accessAge into the pot
+    pensionPots: [
+      { id: 'workplace', name: 'Workplace / SIPP pot', currentValue: 120000, accessAge: 57, taxFreePct: 25, incomeTaxPct: 15, annualContribution: 6000 }
+    ],
     gainFraction: 50,         // % of each withdrawal assumed to be taxable gain vs returned capital
     simRuns: 1000,            // Monte Carlo iterations
     // Wrapper allocation (% of pot) per jurisdiction

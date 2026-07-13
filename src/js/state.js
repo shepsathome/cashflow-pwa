@@ -42,6 +42,17 @@ function migrateState() {
     }
     if (!S.drawdown.wrappers) S.drawdown.wrappers = deep(DEFAULTS.drawdown.wrappers);
     if (!S.drawdown.taxRates) S.drawdown.taxRates = deep(DEFAULTS.drawdown.taxRates);
+    if (!Array.isArray(S.drawdown.pensions)) S.drawdown.pensions = [];
+    if (!Array.isArray(S.drawdown.pensionPots)) S.drawdown.pensionPots = [];
+    // Migrate legacy single "other income" into a pension income stream
+    if ((S.drawdown.otherIncome || 0) > 0 && S.drawdown.pensions.length === 0) {
+      S.drawdown.pensions.push({
+        id: 'other_' + Date.now(), name: 'Other income',
+        annualAmount: S.drawdown.otherIncome, startAge: S.drawdown.otherIncomeStartAge || 67,
+        inflationLinked: true, taxRatePct: 0
+      });
+      S.drawdown.otherIncome = 0;
+    }
   }
 }
 

@@ -522,11 +522,22 @@
           <div class="sf"><label>Volatility (%/yr)</label><input type="number" class="si" id="dd-vol" step="0.5" onchange="applyDdCfg()"></div>
           <div class="sf"><label>Withdrawal rate (%)</label><input type="number" class="si" id="dd-swr" step="0.1" onchange="applyDdCfg()"></div>
           <div class="sf"><label>Annual contribution until retirement (<span class="cur-sym">£</span>)</label><input type="number" class="si si-num" id="dd-contrib" step="500" min="0" onchange="applyDdCfg()"></div>
-          <div class="sf"><label>Other income (<span class="cur-sym">£</span>/yr, e.g. state pension)</label><input type="number" class="si si-num" id="dd-otherinc" step="500" min="0" onchange="applyDdCfg()"></div>
-          <div class="sf"><label>Other income starts at age</label><input type="number" class="si" id="dd-otherage" min="50" max="90" step="1" onchange="applyDdCfg()"></div>
           <div class="sf"><label>Taxable gain fraction (%)</label><input type="number" class="si" id="dd-gainfrac" min="0" max="100" step="5" onchange="applyDdCfg()"></div>
           <div class="sf"><label>Monte Carlo runs</label><input type="number" class="si" id="dd-runs" min="100" max="5000" step="100" onchange="applyDdCfg()"></div>
         </div>
+      </div>
+
+      <div class="ef-cfg-block">
+        <label class="ef-cfg-label">Pensions &amp; guaranteed income</label>
+        <div class="dd-pen-group">
+          <div class="dd-pen-hdr"><span>Income streams — state / DB pensions (reduce your ETF drawdown)</span><button class="btn btn-sm btn-g" onclick="addPensionStream()">+ Add income</button></div>
+          <div id="dd-pen-streams"></div>
+        </div>
+        <div class="dd-pen-group" style="margin-top:16px">
+          <div class="dd-pen-hdr"><span>Pension pots — workplace / SIPP / PER (unlock into your pot)</span><button class="btn btn-sm btn-g" onclick="addPensionPot()">+ Add pot</button></div>
+          <div id="dd-pen-pots"></div>
+        </div>
+        <div class="settings-note" style="margin-top:8px">Income streams start at their own age and are netted off your expenses. Pots grow with the market until their access age, then a tax-free lump sum + the taxed remainder fold into your drawdown pot.</div>
       </div>
 
       <div class="ef-cfg-block" style="border-bottom:none;padding-bottom:0">

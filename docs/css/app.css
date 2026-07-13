@@ -435,3 +435,20 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
   .dd-tax-note{grid-column:1/-1}
   .dd-wrap-row{grid-template-columns:90px 1fr 44px;gap:8px}
 }
+
+/* ───────── PENSIONS (drawdown) ───────── */
+.dd-pen-group{background:var(--s2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.dd-pen-hdr{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--text)}
+.dd-pen-hdr span{color:var(--dim);font-weight:500}
+.dd-pen-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px}
+.dd-pen-row:last-child{margin-bottom:0}
+.dd-pen-name{height:36px;flex:1 1 150px;min-width:120px}
+.dd-pen-f{display:flex;flex-direction:column;gap:4px}
+.dd-pen-f span{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+.dd-pen-f .si{width:100px}
+.dd-pen-f .si-num{width:110px}
+.dd-pen-chk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text);padding-bottom:9px;cursor:pointer;white-space:nowrap}
+.dd-pen-chk input{accent-color:var(--gold);cursor:pointer}
+.dd-pen-empty{font-size:12px;color:var(--dim);padding:8px 2px;font-style:italic}
+.dd-pen-note{display:block;margin-top:6px;color:var(--gold);font-size:12px}
+@media(max-width:700px){.dd-pen-f .si,.dd-pen-f .si-num{width:84px}.dd-pen-name{flex-basis:100%}}

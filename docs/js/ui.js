@@ -922,11 +922,19 @@ function renderDrawdown() {
   badge.textContent = c.status.label;
   badge.style.background = c.status.color;
   const sub = document.getElementById('dd-hero-sub');
+  let penNote = '';
+  if (c.pensionIncomeAtHorizon > 0 || c.totalPensionPots > 0) {
+    const bits = [];
+    if (c.pensionIncomeAtRetire > 0) bits.push(`${fmt(c.pensionIncomeAtRetire)}/yr guaranteed income from age ${dd.retireAge}`);
+    if (c.nextPensionAge) bits.push(`more kicks in at age ${c.nextPensionAge}`);
+    if (c.totalPensionPots > 0) bits.push(`${fmt(c.totalPensionPots)} in pension pots unlocking later`);
+    if (bits.length) penNote = ` <span class="dd-pen-note">Includes ${bits.join(' · ')}.</span>`;
+  }
   if (c.successRate >= 0.9) {
-    sub.innerHTML = `Across ${c.runs.toLocaleString()} simulated market histories, your pot survived to age ${dd.horizonAge} in <strong>${Math.round(c.successRate * 100)}%</strong> of them. The median outcome leaves <strong>${fmt(c.medianEnd)}</strong> at age ${dd.horizonAge}.`;
+    sub.innerHTML = `Across ${c.runs.toLocaleString()} simulated market histories, your pot survived to age ${dd.horizonAge} in <strong>${Math.round(c.successRate * 100)}%</strong> of them. The median outcome leaves <strong>${fmt(c.medianEnd)}</strong> at age ${dd.horizonAge}.` + penNote;
   } else {
     sub.innerHTML = `Across ${c.runs.toLocaleString()} simulated market histories, the pot ran out before age ${dd.horizonAge} in <strong>${Math.round((1 - c.successRate) * 100)}%</strong> of them` +
-      (c.medianDepletionAge ? ` — typically around age <strong>${c.medianDepletionAge}</strong>. Consider a later retirement age, lower spending, or a lower withdrawal rate.` : '.');
+      (c.medianDepletionAge ? ` — typically around age <strong>${c.medianDepletionAge}</strong>. Consider a later retirement age, lower spending, or a lower withdrawal rate.` : '.') + penNote;
   }
 
   // Stat cards
@@ -969,11 +977,10 @@ function renderDrawdown() {
   document.getElementById('dd-vol').value = dd.volatilityPct;
   document.getElementById('dd-swr').value = dd.withdrawalRate;
   document.getElementById('dd-contrib').value = dd.annualContribution;
-  document.getElementById('dd-otherinc').value = dd.otherIncome;
-  document.getElementById('dd-otherage').value = dd.otherIncomeStartAge;
   document.getElementById('dd-gainfrac').value = dd.gainFraction;
   document.getElementById('dd-runs').value = dd.simRuns;
 
+  renderDdPensions();
   renderDdWrappers();
   renderDdTax(c);
   drawDrawdownChart(c);
@@ -999,6 +1006,65 @@ function renderDdWrappers() {
   const tEl = document.getElementById('dd-wrap-total');
   tEl.textContent = `Total allocation: ${total}%` + (total !== 100 ? ' — should sum to 100%' : ' ✓');
   tEl.style.color = total === 100 ? 'var(--green)' : 'var(--amber)';
+}
+
+// ─── Pensions: dynamic income streams + DC pots ───
+function renderDdPensions() {
+  const dd = ddConfig();
+  const cur = currencySymbol();
+  // Income streams
+  const streams = dd.pensions || [];
+  document.getElementById('dd-pen-streams').innerHTML = streams.length ? streams.map(p => `
+    <div class="dd-pen-row">
+      <input type="text" class="fi dd-pen-name" value="${escAttr(p.name)}" placeholder="Pension name" onchange="updatePensionStream('${p.id}','name',this.value)">
+      <label class="dd-pen-f"><span>Amount (${cur}/yr)</span><input type="number" class="si si-num" value="${p.annualAmount}" step="250" min="0" onchange="updatePensionStream('${p.id}','annualAmount',this.value)"></label>
+      <label class="dd-pen-f"><span>From age</span><input type="number" class="si" value="${p.startAge}" min="40" max="90" step="1" onchange="updatePensionStream('${p.id}','startAge',this.value)"></label>
+      <label class="dd-pen-f"><span>Tax %</span><input type="number" class="si" value="${p.taxRatePct}" min="0" max="60" step="1" onchange="updatePensionStream('${p.id}','taxRatePct',this.value)"></label>
+      <label class="dd-pen-chk" title="Rises with inflation (holds real value)"><input type="checkbox" ${p.inflationLinked ? 'checked' : ''} onchange="updatePensionStream('${p.id}','inflationLinked',this.checked)"><span>Index-linked</span></label>
+      <button class="btn btn-sm btn-del" onclick="removePensionStream('${p.id}')">✕</button>
+    </div>`).join('') : '<div class="dd-pen-empty">No income streams yet — add your UK/French state pension or any DB pension.</div>';
+  // DC pots
+  const pots = dd.pensionPots || [];
+  document.getElementById('dd-pen-pots').innerHTML = pots.length ? pots.map(pp => `
+    <div class="dd-pen-row dd-pen-row-pot">
+      <input type="text" class="fi dd-pen-name" value="${escAttr(pp.name)}" placeholder="Pot name" onchange="updatePensionPot('${pp.id}','name',this.value)">
+      <label class="dd-pen-f"><span>Value now (${cur})</span><input type="number" class="si si-num" value="${pp.currentValue}" step="1000" min="0" onchange="updatePensionPot('${pp.id}','currentValue',this.value)"></label>
+      <label class="dd-pen-f"><span>Access age</span><input type="number" class="si" value="${pp.accessAge}" min="40" max="80" step="1" onchange="updatePensionPot('${pp.id}','accessAge',this.value)"></label>
+      <label class="dd-pen-f"><span>Tax-free %</span><input type="number" class="si" value="${pp.taxFreePct}" min="0" max="100" step="5" onchange="updatePensionPot('${pp.id}','taxFreePct',this.value)"></label>
+      <label class="dd-pen-f"><span>Income tax %</span><input type="number" class="si" value="${pp.incomeTaxPct}" min="0" max="60" step="1" onchange="updatePensionPot('${pp.id}','incomeTaxPct',this.value)"></label>
+      <label class="dd-pen-f"><span>Contrib (${cur}/yr)</span><input type="number" class="si si-num" value="${pp.annualContribution}" step="500" min="0" onchange="updatePensionPot('${pp.id}','annualContribution',this.value)"></label>
+      <button class="btn btn-sm btn-del" onclick="removePensionPot('${pp.id}')">✕</button>
+    </div>`).join('') : '<div class="dd-pen-empty">No pension pots yet — add your workplace pension, SIPP or PER.</div>';
+}
+
+function escAttr(s) { return String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function addPensionStream() {
+  ddConfig().pensions.push({ id: 'pen_' + Date.now(), name: 'New pension', annualAmount: 10000, startAge: 67, inflationLinked: true, taxRatePct: 0 });
+  markDirty(); renderDrawdown();
+}
+function addPensionPot() {
+  ddConfig().pensionPots.push({ id: 'pot_' + Date.now(), name: 'New pension pot', currentValue: 50000, accessAge: 57, taxFreePct: 25, incomeTaxPct: 15, annualContribution: 0 });
+  markDirty(); renderDrawdown();
+}
+function removePensionStream(id) {
+  const dd = ddConfig(); dd.pensions = dd.pensions.filter(p => p.id !== id); markDirty(); renderDrawdown();
+}
+function removePensionPot(id) {
+  const dd = ddConfig(); dd.pensionPots = dd.pensionPots.filter(p => p.id !== id); markDirty(); renderDrawdown();
+}
+function updatePensionStream(id, field, val) {
+  const p = ddConfig().pensions.find(x => x.id === id); if (!p) return;
+  if (field === 'name') p.name = val;
+  else if (field === 'inflationLinked') p.inflationLinked = !!val;
+  else p[field] = parseFloat(val) || 0;
+  markDirty(); renderDrawdown();
+}
+function updatePensionPot(id, field, val) {
+  const pp = ddConfig().pensionPots.find(x => x.id === id); if (!pp) return;
+  if (field === 'name') pp.name = val;
+  else pp[field] = parseFloat(val) || 0;
+  markDirty(); renderDrawdown();
 }
 
 function renderDdTax(c) {
@@ -1124,8 +1190,6 @@ function applyDdCfg() {
   dd.volatilityPct = num('dd-vol', dd.volatilityPct);
   dd.withdrawalRate = Math.max(0.1, num('dd-swr', dd.withdrawalRate));
   dd.annualContribution = num('dd-contrib', dd.annualContribution);
-  dd.otherIncome = num('dd-otherinc', dd.otherIncome);
-  dd.otherIncomeStartAge = Math.round(num('dd-otherage', dd.otherIncomeStartAge));
   dd.gainFraction = Math.max(0, Math.min(100, num('dd-gainfrac', dd.gainFraction)));
   dd.simRuns = Math.max(100, Math.min(5000, Math.round(num('dd-runs', dd.simRuns))));
   // Guard against invalid age ordering

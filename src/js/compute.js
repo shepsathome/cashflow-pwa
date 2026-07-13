@@ -265,6 +265,26 @@ function gaussian(mean, sd) {
   return mean + z * sd;
 }
 
+// Net (after-tax) guaranteed pension income at a given age, in REAL (today's-money) terms
+function pensionNetIncomeAt(age, dd) {
+  let inc = 0;
+  for (const p of (dd.pensions || [])) {
+    if (age < p.startAge) continue;
+    let amt = p.annualAmount || 0;
+    // Non-index-linked pensions lose real value over time (deflate from today)
+    if (!p.inflationLinked) amt = amt / Math.pow(1 + (dd.inflationPct || 0) / 100, Math.max(0, age - dd.currentAge));
+    inc += amt * (1 - (p.taxRatePct || 0) / 100);
+  }
+  return inc;
+}
+
+// Net value a DC pension pot releases into the liquid pot when it unlocks
+function pensionPotNetValue(pp, bal) {
+  const taxFree = bal * (pp.taxFreePct || 0) / 100;
+  const taxable = bal - taxFree;
+  return taxFree + taxable * (1 - (pp.incomeTaxPct || 0) / 100);
+}
+
 function computeDrawdown() {
   const dd = ddConfig();
   const pot0 = drawdownPot();
@@ -275,7 +295,6 @@ function computeDrawdown() {
   const gf = (dd.gainFraction || 0) / 100;
   const startAge = dd.currentAge, retire = dd.retireAge, end = dd.horizonAge;
   const contrib = dd.annualContribution || 0;
-  const otherInc = dd.otherIncome || 0, otherStart = dd.otherIncomeStartAge;
   const runs = Math.max(50, Math.min(dd.simRuns || 500, 5000));
   const years = Math.max(1, end - startAge);
   const nCols = years + 1;
@@ -298,20 +317,36 @@ function computeDrawdown() {
   const endValues = [];
   for (let r = 0; r < runs; r++) {
     let pot = pot0;
+    // Per-run DC pension pot balances (grow with the same market draws until they unlock)
+    const pots = (dd.pensionPots || []).map(pp => ({ cfg: pp, bal: pp.currentValue || 0, unlocked: false }));
     const path = [pot];
     let depleted = false, depAge = null;
     for (let y = 0; y < years; y++) {
       const age = startAge + y;
+
+      // Unlock any DC pension pots reaching their access age → net value folds into the liquid pot
+      for (const pp of pots) {
+        if (!pp.unlocked && age >= pp.cfg.accessAge) {
+          pot += pensionPotNetValue(pp.cfg, pp.bal);
+          pp.bal = 0; pp.unlocked = true;
+        }
+      }
+
+      // Cashflow
       if (age < retire) {
         pot += contrib;
+        for (const pp of pots) if (!pp.unlocked) pp.bal += (pp.cfg.annualContribution || 0);
       } else {
-        const net = Math.max(0, annualExpense - (age >= otherStart ? otherInc : 0));
+        const net = Math.max(0, annualExpense - pensionNetIncomeAt(age, dd));
         pot -= grossForNet(net, gf, effRate, allowance);
       }
       if (pot <= 0) { pot = 0; if (!depleted) { depleted = true; depAge = age; } }
+
+      // Growth (same real return draw applied to liquid pot and still-locked pension pots)
       const ret = gaussian(realReturn, vol);
       pot = pot * (1 + ret);
       if (pot < 0) pot = 0;
+      for (const pp of pots) if (!pp.unlocked) pp.bal = Math.max(0, pp.bal * (1 + ret));
       path.push(pot);
     }
     if (!depleted) successes++; else depletionAges.push(depAge);
@@ -345,11 +380,24 @@ function computeDrawdown() {
   else if (successRate >= 0.5) status = { label: 'At risk', color: 'var(--amber)', key: 'risk' };
   else status = { label: 'Unlikely to last', color: 'var(--red)', key: 'fail' };
 
+  // Pension summary (at retirement age and at horizon) for display
+  const pensionIncomeAtRetire = pensionNetIncomeAt(retire, dd);
+  const pensionIncomeAtHorizon = pensionNetIncomeAt(end, dd);
+  const totalPensionPots = (dd.pensionPots || []).reduce((s, pp) => s + (pp.currentValue || 0), 0);
+  const nextPensionAge = (() => {
+    const ages = [
+      ...(dd.pensions || []).filter(p => p.startAge > retire).map(p => p.startAge),
+      ...(dd.pensionPots || []).filter(pp => pp.accessAge > retire).map(pp => pp.accessAge)
+    ].sort((a, b) => a - b);
+    return ages.length ? ages[0] : null;
+  })();
+
   return {
     pot0, annualExpense, realReturn, effRate, allowance, fireNumber, yearsToFire,
     startAge, retire, end, years, runs,
     successRate, medianDepletionAge, medianEnd,
     sustainableNet, sustainableGross,
+    pensionIncomeAtRetire, pensionIncomeAtHorizon, totalPensionPots, nextPensionAge,
     fireProgress: fireNumber > 0 ? Math.min(pot0 / fireNumber, 1) : 0,
     p10, p50, p90, status
   };
