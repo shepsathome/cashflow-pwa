@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bear-finance-2026.07.13.2';
+const CACHE_NAME = 'bear-finance-2026.08.15.1';
 const APP_SHELL = [
   './',
   './index.html',

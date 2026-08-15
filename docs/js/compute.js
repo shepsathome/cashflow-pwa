@@ -465,21 +465,43 @@ async function fetchViaProxy(targetUrl) {
     } catch (e) { /* fall through to external proxies */ }
   }
 
-  // Fallback: external CORS proxies
+  // Fallback: external CORS proxies (for phone / GitHub Pages, where the browser
+  // can't call Yahoo directly). These are third-party and intermittently down, so we
+  // try several endpoints across both Yahoo hosts and retry once.
+  //   kind 'raw'  → the response body IS the JSON we want.
+  //   kind 'wrap' → response is { contents: "<stringified JSON>" } (allorigins /get).
+  const altUrl = targetUrl.replace('query1.finance', 'query2.finance');
+  const enc = encodeURIComponent(targetUrl);
+  const encAlt = encodeURIComponent(altUrl);
   const proxies = [
-    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    { kind: 'wrap', url: `https://api.allorigins.win/get?url=${enc}` },
+    { kind: 'raw', url: `https://api.allorigins.win/raw?url=${enc}` },
+    { kind: 'raw', url: `https://api.codetabs.com/v1/proxy?quest=${enc}` },
+    { kind: 'wrap', url: `https://api.allorigins.win/get?url=${encAlt}` },
+    { kind: 'raw', url: `https://api.codetabs.com/v1/proxy?quest=${encAlt}` },
   ];
-  for (const makeProxy of proxies) {
-    try {
-      const resp = await fetch(makeProxy(targetUrl), { signal: AbortSignal.timeout(10000) });
-      if (!resp.ok) continue;
-      return await resp.json();
-    } catch (e) {
-      continue;
+
+  const tryOnce = async (p) => {
+    const resp = await fetch(p.url, { signal: AbortSignal.timeout(12000) });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (p.kind === 'wrap') {
+      const wrapped = await resp.json();
+      if (!wrapped || wrapped.contents == null) throw new Error('empty wrapper');
+      return JSON.parse(wrapped.contents);
+    }
+    return await resp.json();
+  };
+
+  // Two passes — these proxies frequently succeed on a retry.
+  for (let pass = 0; pass < 2; pass++) {
+    for (const p of proxies) {
+      try {
+        const data = await tryOnce(p);
+        if (data && data.chart) return data; // sanity-check it's a Yahoo chart payload
+      } catch (e) { /* try the next proxy */ }
     }
   }
-  throw new Error('Price fetch failed — load history from a PC running the Cashflow server, then sync');
+  throw new Error('Price fetch failed — data proxies are unavailable right now. Prices refresh automatically overnight, or load history from a PC running the Cashflow server, then sync.');
 }
 
 function parseYahooChart(data) {
