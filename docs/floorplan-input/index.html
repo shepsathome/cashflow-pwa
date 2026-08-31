@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Project Seattle Floorplan Input</title>
+    <script>
+      (() => {
+        const param = new URLSearchParams(window.location.search).get("scoutTheme");
+        const theme =
+          param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+    <link rel="stylesheet" href="./styles.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Internal intake tool</p>
+          <h1>Floor plan measurement input</h1>
+          <p class="lede">
+            Enter approximate room-by-room measurements from hand-drawn sketches.
+            Nothing here publishes to the public site.
+          </p>
+        </div>
+        <div class="header-actions">
+          <button type="button" class="secondary-button" id="import-button">Import JSON</button>
+          <button type="button" class="primary-button" id="export-button">Export JSON</button>
+          <input type="file" id="import-file" accept="application/json,.json" hidden>
+        </div>
+      </header>
+
+      <section class="instructions-banner" aria-label="Sketch legend and guidance">
+        <strong>Sketch legend:</strong>
+        <span>Light-blue shaded squares = windows.</span>
+        <span>Green lines = internal doors.</span>
+        <span>Red lines = external doors.</span>
+        <span>Approximate measurements and notes are fine.</span>
+        <span>Autosave is specific to this device and browser; export JSON for backup or migration.</span>
+      </section>
+
+      <section class="status-bar" aria-live="polite">
+        <div id="save-status">Ready. Changes auto-save in this browser.</div>
+        <div id="floor-summary"></div>
+      </section>
+
+      <nav class="tab-list" aria-label="Floor tabs" id="tab-list"></nav>
+
+      <main id="floor-content" class="floor-content"></main>
+    </div>
+  </body>
+</html>
