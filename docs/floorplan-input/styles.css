@@ -88,8 +88,11 @@ button {
 .page-header,
 .instructions-banner,
 .status-bar,
+.progress-panel,
+.walk-card,
 .floor-panel,
 .room-card,
+.wall-card,
 .opening-card {
   background: var(--cp-surface);
   border: 1px solid var(--cp-border);
@@ -98,6 +101,8 @@ button {
 
 .page-header,
 .status-bar,
+.progress-panel,
+.walk-card,
 .floor-panel {
   box-shadow: var(--cp-shadow);
 }
@@ -214,6 +219,165 @@ h3 {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.mode-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--cp-border);
+}
+
+.progress-panel {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.7fr) minmax(12rem, 1fr) auto;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.progress-panel strong {
+  display: block;
+}
+
+progress {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 1rem;
+  accent-color: var(--cp-success);
+}
+
+.walk-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.walk-card {
+  overflow: hidden;
+}
+
+.walk-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  padding: 1.25rem;
+  color: #fff;
+  background: #20362b;
+}
+
+.walk-header .eyebrow,
+.walk-header p {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.walk-header p {
+  margin: 0.4rem 0 0;
+}
+
+.wall-number {
+  align-self: start;
+  border: 1px solid rgba(255,255,255,.35);
+  border-radius: 999px;
+  padding: .45rem .75rem;
+  white-space: nowrap;
+}
+
+.walk-body {
+  padding: 1.25rem;
+}
+
+.survey-callout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+
+.survey-callout > div {
+  border-left: 3px solid var(--cp-accent);
+  padding: .6rem .8rem;
+  background: var(--cp-accent-soft);
+}
+
+.survey-callout span,
+.survey-callout strong {
+  display: block;
+}
+
+.survey-callout span {
+  color: var(--cp-text-muted);
+  font-size: .78rem;
+}
+
+.verify-toggle {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-height: 2.75rem;
+  font-weight: 600;
+}
+
+.verify-toggle input {
+  width: 1.35rem;
+  height: 1.35rem;
+  accent-color: var(--cp-success);
+}
+
+.walk-actions {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: .75rem;
+  margin-top: 1.25rem;
+}
+
+.walk-actions .primary-button {
+  grid-column: 4;
+}
+
+.wall-list {
+  display: grid;
+  gap: .75rem;
+  margin-top: 1rem;
+}
+
+.wall-card {
+  padding: 1rem;
+}
+
+.wall-card.is-verified {
+  border-color: var(--cp-success);
+}
+
+.wall-summary {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: .75rem;
+}
+
+.wall-summary p {
+  margin: .25rem 0 0;
+  color: var(--cp-text-muted);
+}
+
+.verified-badge {
+  border-radius: 999px;
+  padding: .3rem .65rem;
+  color: var(--cp-success);
+  border: 1px solid currentColor;
+  font-size: .78rem;
+}
+
+.opening-reminder {
+  margin-top: 1rem;
+  padding: .8rem;
+  border: 1px dashed var(--cp-border-strong);
+  border-radius: .6rem;
+  color: var(--cp-text-muted);
 }
 
 .tab-button {
@@ -369,12 +533,38 @@ h3 {
   }
 
   .status-bar,
+  .progress-panel,
   .page-header,
   .panel-header,
   .room-header,
   .opening-header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .progress-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-panel > *,
+  .page-header > *,
+  .walk-header > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .walk-header h2,
+  .lede,
+  .instructions-banner span {
+    overflow-wrap: anywhere;
+  }
+
+  .walk-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .walk-actions .primary-button {
+    grid-column: 1 / -1;
   }
 
   .header-actions,

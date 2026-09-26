@@ -1,0 +1,410 @@
+{
+  "schemaVersion": "public-floorplans.v1",
+  "source": {
+    "type": "owner-measured",
+    "capturedAt": "2026-09-13",
+    "inputSchema": "floorplan-input.v1",
+    "historicReference": {
+      "type": "scanned-floor-plan",
+      "receivedAt": "2026-09-21",
+      "usage": "Exterior footprint and adjacency reference only; obsolete interior divisions are not treated as current."
+    }
+  },
+  "status": "owner-measured-schematic",
+  "disclaimer": "Owner measurements and reconstructed room relationships. Approximate, not survey-grade or for contractual use.",
+  "orientation": {
+    "label": "Approx. NNE",
+    "degrees": 22.5,
+    "status": "owner-estimate"
+  },
+  "floors": [
+    {
+      "id": "ground",
+      "label": "Ground floor",
+      "layoutNote": "Current rooms use owner measurements; the exterior perimeter is informed by an older plan whose interior divisions are obsolete.",
+      "buildingOutline": [
+        [12.516,-2.034],
+        [15.337,-2.034],
+        [15.337,-0.155],
+        [16.8,-0.155],
+        [16.8,10],
+        [4.825,10],
+        [4.825,20.72],
+        [0.705,20.72],
+        [0.705,16.28],
+        [0.695,16.28],
+        [0.695,10],
+        [0,10],
+        [0,4.93],
+        [1.85,4.93],
+        [1.85,2.292],
+        [7.34,2.292],
+        [7.34,-0.096],
+        [11.507,-0.096],
+        [11.507,3.658],
+        [12.386,3.658],
+        [11.507,-0.155],
+        [12.516,-0.155]
+      ],
+      "rooms": [
+        {
+          "id": "gym",
+          "label": "Gym",
+          "x": 0.705,
+          "y": 16.28,
+          "width": 4.11,
+          "depth": 4.44,
+          "height": 2.97,
+          "measured": {"length": 4.44, "width": 4.11},
+          "shapeNote": "Pitched ceiling: approximately 2.73 m rising to 3.00 m, then falling to 2.23 m.",
+          "openings": [
+            {"type": "internal-door", "wall": "north", "offset": 2.6, "width": 0.86, "connectsTo": "Verrière"},
+            {"type": "external-door", "wall": "west", "offset": 1.7, "width": 0.9, "connectsTo": "Outside"},
+            {"type": "window", "wall": "south", "offset": 2.47, "width": 1.21, "connectsTo": "Outside"}
+          ]
+        },
+        {
+          "id": "verriere",
+          "label": "Verrière",
+          "x": 0.695,
+          "y": 10,
+          "width": 4.13,
+          "depth": 6.28,
+          "height": 2.79,
+          "measured": {"length": 6.28, "width": 4.13},
+          "shapeNote": "Pitched ceiling. Glazing runs along the east wall from approximately 0.83 m above floor level.",
+          "openings": [
+            {"type": "glazing", "wall": "east", "offset": 0, "width": 6.28, "connectsTo": "Outside"},
+            {"type": "external-door", "wall": "east", "offset": 1.09, "width": 0.88, "connectsTo": "Outside"},
+            {"type": "external-door", "wall": "west", "offset": 0.36, "width": 1.24, "connectsTo": "Outside"},
+            {"type": "internal-double-door", "wall": "north", "offset": 2.385, "width": 1.38, "connectsTo": "Dining room", "renderFrom": "Dining room"}
+          ]
+        },
+        {
+          "id": "dining",
+          "label": "Dining room",
+          "x": 0,
+          "y": 4.93,
+          "width": 5.52,
+          "depth": 5.07,
+          "height": 3.08,
+          "measured": {"length": 5.52, "width": 5.07},
+          "shapeNote": "Fireplace on west wall.",
+          "openings": [
+            {"type": "internal-double-door", "wall": "south", "offset": 3.08, "width": 1.38, "connectsTo": "Verrière"},
+            {"type": "window", "wall": "south", "offset": 4.46, "width": 0.53, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "north", "offset": 4.31, "width": 0.65, "connectsTo": "Back hall"},
+            {"type": "window", "wall": "west", "offset": 0.33, "width": 1, "connectsTo": "Outside"}
+          ]
+        },
+        {
+          "id": "back-entry",
+          "label": "Back entry",
+          "x": 1.85,
+          "y": 2.292,
+          "width": 5.46,
+          "depth": 2.638,
+          "height": 2.851,
+          "measured": {"length": 2.638, "width": 5.46},
+          "shapeNote": "Spiral staircase in the north-east corner rises to the first floor.",
+          "openings": [
+            {"type": "external-door", "wall": "west", "offset": 0.71, "width": 0.896, "connectsTo": "Outside"},
+            {"type": "window", "wall": "north", "offset": 1.402, "width": 0.742, "connectsTo": "Outside"},
+            {"type": "window", "wall": "north", "offset": 2.585, "width": 0.627, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "east", "offset": 1.595, "width": 0.841, "connectsTo": "Back hall"}
+          ]
+        },
+        {
+          "id": "back-hall",
+          "label": "Back hall",
+          "x": 7.34,
+          "y": 3.658,
+          "width": 5.046,
+          "depth": 0.997,
+          "height": 3.013,
+          "measured": {"length": 5.046, "width": 0.997},
+          "openings": [
+            {"type": "internal-door", "wall": "north", "offset": 1.449, "width": 0.782, "connectsTo": "Laundry room"},
+            {"type": "internal-door", "wall": "north", "offset": 3.107, "width": 0.764, "connectsTo": "WC"}
+          ]
+        },
+        {
+          "id": "laundry",
+          "label": "Laundry",
+          "x": 7.34,
+          "y": -0.096,
+          "width": 2.169,
+          "depth": 3.754,
+          "height": 2.736,
+          "measured": {"length": 3.754, "width": 2.169},
+          "openings": [
+            {"type": "internal-door", "wall": "south", "offset": 0.737, "width": 0.78, "connectsTo": "Back hall"},
+            {"type": "window", "wall": "north", "offset": 0.488, "width": 1.053, "connectsTo": "Outside"}
+          ]
+        },
+        {
+          "id": "wc",
+          "label": "WC",
+          "x": 9.509,
+          "y": -0.104,
+          "width": 1.998,
+          "depth": 3.762,
+          "height": 2.744,
+          "measured": {"length": 3.762, "width": 1.998},
+          "polygon": [[0,0],[1.998,0],[1.998,1.68],[1.163,1.68],[1.163,3.762],[0,3.762]],
+          "shapeNote": "L-shaped; full width at the north end, narrowing to approximately 1.163 m with the recess on the east side.",
+          "openings": [
+            {"type": "internal-door", "wall": "south", "offset": 0.183, "width": 0.794, "connectsTo": "Back hall"},
+            {"type": "window", "wall": "north", "offset": 0.168, "width": 0.914, "connectsTo": "Outside"}
+          ]
+        },
+        {
+          "id": "entrance-lounge",
+          "label": "Entrance lounge",
+          "x": 5.52,
+          "y": 4.655,
+          "width": 6.668,
+          "depth": 5.345,
+          "height": 2.832,
+          "measured": {"length": 5.345, "width": 6.668},
+          "shapeNote": "Winding staircase in the north-east corner rises to the first floor.",
+          "openings": [
+            {"type": "internal-door", "wall": "east", "offset": 2.157, "width": 0.768, "connectsTo": "Lounge"},
+            {"type": "external-double-door", "wall": "south", "offset": 4.876, "width": 1.505, "connectsTo": "Outside"},
+            {"type": "window", "wall": "south", "offset": 1.189, "width": 1.609, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "west", "offset": 4.229, "width": 0.752, "connectsTo": "Dining room"}
+          ]
+        },
+        {
+          "id": "lounge",
+          "label": "Lounge",
+          "x": 12.188,
+          "y": 4.684,
+          "width": 4.612,
+          "depth": 5.316,
+          "height": 2.842,
+          "measured": {"length": 5.316, "width": 4.612},
+          "shapeNote": "Fireplace on north wall, approximately 1.303 m wide and 0.629 m deep.",
+          "openings": [
+            {"type": "window", "wall": "south", "offset": 1.817, "width": 1.058, "connectsTo": "Outside"},
+            {"type": "window", "wall": "east", "offset": 2.128, "width": 1.062, "connectsTo": "Outside"}
+          ]
+        },
+        {
+          "id": "kitchen",
+          "label": "Kitchen",
+          "x": 11.507,
+          "y": -0.155,
+          "width": 5.293,
+          "depth": 4.839,
+          "height": 2.957,
+          "measured": {"length": 4.839, "width": 5.293},
+          "shapeNote": "Fireplace on west wall; local width reduces to approximately 4.297 m.",
+          "pendingMeasurements": ["Two windows on the east wall"],
+          "openings": [
+            {"type": "internal-door", "wall": "west", "offset": 4.075, "width": 0.764, "connectsTo": "Back hall"},
+            {"type": "internal-door", "wall": "north", "offset": 1.449, "width": 0.873, "connectsTo": "Pantry"}
+          ]
+        },
+        {
+          "id": "pantry",
+          "label": "Pantry",
+          "x": 12.516,
+          "y": -2.034,
+          "width": 2.821,
+          "depth": 1.879,
+          "height": 2.735,
+          "measured": {"length": 1.879, "width": 2.821},
+          "shapeNote": "Ceiling slopes from south to north, reaching approximately 2.510 m at the north wall.",
+          "openings": [
+            {"type": "external-door", "wall": "north", "offset": 0.301, "width": 0.877, "connectsTo": "Outside"},
+            {"type": "window", "wall": "west", "offset": 0.208, "width": 1.553, "connectsTo": "Outside"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "first",
+      "label": "First floor",
+      "layoutNote": "Current rooms use owner measurements; the overall upper-floor mass is cross-checked against an older plan.",
+      "buildingOutline": [
+        [7.34,-0.096],
+        [11.507,-0.096],
+        [11.507,-0.155],
+        [16.8,-0.155],
+        [16.8,10],
+        [0,10],
+        [0,4.93],
+        [1.85,4.93],
+        [1.85,2.292],
+        [7.34,2.292]
+      ],
+      "rooms": [
+        {
+          "id": "master-bedroom",
+          "label": "Master bedroom",
+          "x": 0.81,
+          "y": 5.29,
+          "width": 4.775,
+          "depth": 5.41,
+          "height": 2.721,
+          "measured": {"length": 5.41, "width": 4.775},
+          "shapeNote": "Ceiling slopes toward the west to approximately 2.247 m. West-wall fireplace approximately 1.157 m wide and 0.527 m deep.",
+          "openings": [
+            {"type": "internal-door", "wall": "east", "offset": 4.393, "width": 0.817, "connectsTo": "Foyer"},
+            {"type": "window", "wall": "west", "offset": 0.229, "width": 1.419, "connectsTo": "Outside"},
+            {"type": "window", "wall": "west", "offset": 3.547, "width": 1.407, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "north", "offset": 0.834, "width": 0.715, "connectsTo": "En suite"},
+            {"type": "internal-door", "wall": "north", "offset": 3.834, "width": 0.713, "connectsTo": "Back landing"}
+          ]
+        },
+        {
+          "id": "en-suite",
+          "label": "En suite",
+          "x": 1.85,
+          "y": 1.975,
+          "width": 2.284,
+          "depth": 3.315,
+          "height": 2.52,
+          "measured": {"length": 3.315, "width": 2.284},
+          "polygon": [[0,0],[3.09,0],[3.09,1.2],[2.284,1.2],[2.284,3.315],[0,3.315]],
+          "shapeNote": "Walk-in shower extends approximately 0.806 m at the north-east corner.",
+          "openings": [
+            {"type": "window", "wall": "west", "offset": 0.88, "width": 1.42, "connectsTo": "Outside"}
+          ]
+        },
+        {
+          "id": "back-landing",
+          "label": "Back landing",
+          "x": 4.134,
+          "y": 1.975,
+          "width": 1.419,
+          "depth": 3.315,
+          "height": 2.844,
+          "measured": {"length": 1.32, "width": 1.078},
+          "polygon": [[0.806,0],[1.419,0],[1.419,3.315],[0,3.315],[0,1.2],[0.806,1.2]],
+          "shapeNote": "Irregular landing filling the space between the En suite, Office and Master bedroom, with stairs to the ground floor.",
+          "openings": []
+        },
+        {
+          "id": "foyer",
+          "label": "Foyer",
+          "x": 5.585,
+          "y": 5.358,
+          "width": 4.697,
+          "depth": 5.348,
+          "height": 2.671,
+          "measured": {"length": 5.348, "width": 4.697},
+          "shapeNote": "Fireplace on west wall, approximately 1.45 m wide; local width reduces to approximately 4.04 m.",
+          "openings": [
+            {"type": "window", "wall": "south", "offset": 1.802, "width": 1.06, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "east", "offset": 2.363, "width": 0.804, "connectsTo": "Landing"},
+            {"type": "internal-door", "wall": "north", "offset": 2.371, "width": 0.728, "connectsTo": "Hallway"}
+          ]
+        },
+        {
+          "id": "stair-landing",
+          "label": "Stair landing",
+          "x": 10.282,
+          "y": 5.358,
+          "width": 1.5,
+          "depth": 5.348,
+          "height": 2.671,
+          "measured": {"length": 5.348, "width": 1.5},
+          "shapeNote": "Estimated from the ground-floor footprint. Stairs descend on the left and rise to the attic on the right from the north side; the southern section is landing space.",
+          "features": [
+            {"type": "stairs-down", "label": "Down", "x": 0.08, "y": 0.12, "width": 0.62, "depth": 2.15},
+            {"type": "stairs-up", "label": "Up", "x": 0.8, "y": 0.12, "width": 0.62, "depth": 2.15}
+          ],
+          "openings": []
+        },
+        {
+          "id": "hallway",
+          "label": "Hallway",
+          "x": 6.26,
+          "y": 4.062,
+          "width": 6.561,
+          "depth": 1.296,
+          "height": 2.472,
+          "measured": {"length": 1.296, "width": 6.546},
+          "polygon": [[0,0],[6.561,0],[6.561,1.296],[0.135,1.296],[0,1.16]],
+          "shapeNote": "Slightly non-rectangular at the west end; south wall measured approximately 6.681 m.",
+          "openings": []
+        },
+        {
+          "id": "office",
+          "label": "Office",
+          "x": 5.553,
+          "y": 0.351,
+          "width": 2.928,
+          "depth": 3.711,
+          "height": 2.502,
+          "measured": {"length": 3.711, "width": 2.928},
+          "polygon": [[0.281,0],[2.928,0],[2.928,3.711],[0,3.711]],
+          "shapeNote": "Irregular room; north wall approximately 2.647 m versus 2.928 m at the south.",
+          "openings": [
+            {"type": "window", "wall": "north", "offset": 0.408, "width": 1.411, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "south", "offset": 1.003, "width": 0.689, "connectsTo": "Hallway"}
+          ]
+        },
+        {
+          "id": "bathroom",
+          "label": "Bathroom",
+          "x": 8.481,
+          "y": 0.442,
+          "width": 2.54,
+          "depth": 3.62,
+          "height": 2.53,
+          "measured": {"length": 3.62, "width": 2.54},
+          "polygon": [[0,0],[2.54,0],[2.54,1.2],[1.945,1.2],[1.945,3.62],[0,3.62]],
+          "shapeNote": "Irregular shape with a narrower southern section and shower in the south-east corner; final outline needs one confirming measurement.",
+          "features": [
+            {"type": "shower", "label": "Shower", "x": 0.849, "y": 2.79, "width": 1.096, "depth": 0.83},
+            {"type": "toilet-recess", "label": "WC recess", "x": 1.945, "y": 0, "width": 0.595, "depth": 1.2}
+          ],
+          "openings": [
+            {"type": "window", "wall": "north", "offset": 0.628, "width": 1.415, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "south", "offset": 0.01, "width": 0.695, "connectsTo": "Hallway"}
+          ]
+        },
+        {
+          "id": "pink-bedroom",
+          "label": "Pink bedroom",
+          "x": 12.821,
+          "y": 0.393,
+          "width": 3.622,
+          "depth": 4.965,
+          "height": 2.477,
+          "measured": {"length": 4.965, "width": 3.622},
+          "shapeNote": "West-wall closet extends approximately 0.858 m beyond the room; immersion-heater compartment extends farther north.",
+          "features": [
+            {"type": "walk-in-closet", "label": "Walk-in cabinet", "x": -0.858, "y": 1.286, "width": 0.858, "depth": 1.61},
+            {"type": "immersion-cupboard", "label": "Immersion", "x": -0.858, "y": -0.209, "width": 0.858, "depth": 1.495}
+          ],
+          "openings": [
+            {"type": "window", "wall": "north", "offset": 1.058, "width": 1.429, "connectsTo": "Outside"},
+            {"type": "window", "wall": "east", "offset": 1.689, "width": 1.443, "connectsTo": "Outside"},
+            {"type": "internal-door", "wall": "west", "offset": 3.933, "width": 0.692, "connectsTo": "Hallway"}
+          ]
+        },
+        {
+          "id": "black-white-bedroom",
+          "label": "Black & white bedroom",
+          "x": 11.782,
+          "y": 5.358,
+          "width": 4.661,
+          "depth": 5.325,
+          "height": 2.7,
+          "measured": {"length": 5.325, "width": 4.661},
+          "shapeNote": "Fireplace on north wall, approximately 1.234 m wide; local length reduces to approximately 4.734 m.",
+          "openings": [
+            {"type": "internal-door", "wall": "north", "offset": 0.271, "width": 0.787, "connectsTo": "Hallway"},
+            {"type": "internal-door", "wall": "west", "offset": 0.237, "width": 0.769, "connectsTo": "Landing"},
+            {"type": "window", "wall": "south", "offset": 1.839, "width": 1.101, "connectsTo": "Outside"},
+            {"type": "window", "wall": "east", "offset": 2.099, "width": 1.103, "connectsTo": "Outside"}
+          ]
+        }
+      ]
+    }
+  ]
+}
