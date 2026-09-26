@@ -3,7 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Project Seattle Floorplan Input</title>
+    <meta name="theme-color" content="#20362b">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <title>Project Seattle Wall Survey</title>
     <script>
       (() => {
         const param = new URLSearchParams(window.location.search).get("scoutTheme");
@@ -13,33 +15,34 @@
       })();
     </script>
     <link rel="stylesheet" href="./styles.css">
-    <script src="./app.js" defer></script>
+    <script src="./app.js" type="module"></script>
   </head>
   <body>
     <div class="app-shell">
       <header class="page-header">
         <div>
-          <p class="eyebrow">Internal intake tool</p>
-          <h1>Floor plan measurement input</h1>
+          <p class="eyebrow">Private measurement tool</p>
+          <h1>Walk & validate the house</h1>
           <p class="lede">
-            Enter approximate room-by-room measurements from hand-drawn sketches.
-            Nothing here publishes to the public site.
+            Follow the current rough plan room by room. Confirm every internal length,
+            wall thickness, connection and opening while standing in the house.
           </p>
         </div>
         <div class="header-actions">
-          <button type="button" class="secondary-button" id="import-button">Import JSON</button>
-          <button type="button" class="primary-button" id="export-button">Export JSON</button>
+          <button type="button" class="secondary-button" id="refresh-plan-button">Refresh rough plan</button>
+          <button type="button" class="secondary-button" id="import-button">Import backup</button>
+          <button type="button" class="primary-button" id="export-button">Export survey</button>
           <input type="file" id="import-file" accept="application/json,.json" hidden>
         </div>
       </header>
 
-      <section class="instructions-banner" aria-label="Sketch legend and guidance">
-        <strong>Sketch legend:</strong>
-        <span>Light-blue shaded squares = windows.</span>
-        <span>Green lines = internal doors.</span>
-        <span>Red lines = external doors.</span>
-        <span>Approximate measurements and notes are fine.</span>
-        <span>Autosave is specific to this device and browser; export JSON for backup or migration.</span>
+      <section class="instructions-banner" aria-label="Survey guidance">
+        <strong>Recommended route:</strong>
+        <span>Enter each room and measure its walls clockwise.</span>
+        <span>Measure finished wall face to finished wall face.</span>
+        <span>Record openings from the wall's starting corner.</span>
+        <span>No exterior measurements are required.</span>
+        <span>Autosaves on this device; export after every survey session.</span>
       </section>
 
       <section class="status-bar" aria-live="polite">
@@ -47,8 +50,22 @@
         <div id="floor-summary"></div>
       </section>
 
-      <nav class="tab-list" aria-label="Floor tabs" id="tab-list"></nav>
+      <section class="progress-panel" aria-label="Survey progress">
+        <div>
+          <span class="eyebrow">Validation progress</span>
+          <strong id="progress-label">0 of 0 walls verified</strong>
+        </div>
+        <progress id="survey-progress" value="0" max="1"></progress>
+        <button type="button" class="primary-button" id="resume-button">Start guided walk</button>
+      </section>
 
+      <nav class="tab-list" aria-label="Floor tabs" id="tab-list"></nav>
+      <nav class="mode-list" aria-label="Tool mode">
+        <button type="button" class="tab-button" id="walk-mode-button" aria-selected="true">Guided walk</button>
+        <button type="button" class="tab-button" id="edit-mode-button" aria-selected="false">Review all rooms</button>
+      </nav>
+
+      <main id="walk-content" class="walk-content"></main>
       <main id="floor-content" class="floor-content"></main>
     </div>
   </body>
