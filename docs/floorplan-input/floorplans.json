@@ -28,6 +28,99 @@
       "id": "ground",
       "label": "Ground floor",
       "layoutNote": "Ground-floor geometry rebuilt from the owner's verified internal-wall survey dated 28 September 2026. Minor wall-length variations and unverified segments remain schematic.",
+      "measuredWalls": [
+        {
+          "id": "gym-verriere-shared",
+          "x1": 0.011,
+          "y1": 16.275,
+          "x2": 4.097,
+          "y2": 16.275,
+          "thickness": 0.46,
+          "label": "Gym / Verrière shared wall"
+        },
+        {
+          "id": "verriere-shower-north",
+          "x1": 0,
+          "y1": 10,
+          "x2": 1.307,
+          "y2": 10,
+          "thickness": 0.46,
+          "label": "Verrière / Shower room wall"
+        },
+        {
+          "id": "verriere-dining-shared",
+          "x1": 1.307,
+          "y1": 10,
+          "x2": 4.291,
+          "y2": 10,
+          "thickness": 0.48,
+          "label": "Verrière / Dining shared wall",
+          "note": "Average of 0.46 m and 0.50 m readings from opposite faces"
+        },
+        {
+          "id": "dining-south-exterior",
+          "x1": 4.291,
+          "y1": 10,
+          "x2": 6.342,
+          "y2": 10,
+          "thickness": 0.5,
+          "label": "Dining south wall"
+        },
+        {
+          "id": "back-entry-east",
+          "x1": 7.264,
+          "y1": 1.613,
+          "x2": 7.196,
+          "y2": 4.462,
+          "thickness": 0.5,
+          "label": "Back entry east wall"
+        },
+        {
+          "id": "back-entry-north",
+          "x1": 2.091,
+          "y1": 1.613,
+          "x2": 7.264,
+          "y2": 1.613,
+          "thickness": 0.5,
+          "label": "Back entry north wall"
+        },
+        {
+          "id": "laundry-north",
+          "x1": 7.264,
+          "y1": -0.283,
+          "x2": 9.438,
+          "y2": -0.283,
+          "thickness": 0.5,
+          "label": "Laundry north wall"
+        },
+        {
+          "id": "entrance-south",
+          "x1": 6.342,
+          "y1": 10,
+          "x2": 13.026,
+          "y2": 10,
+          "thickness": 0.5,
+          "label": "Entrance lounge south wall"
+        },
+        {
+          "id": "lounge-east",
+          "x1": 17.645,
+          "y1": 4.656,
+          "x2": 17.645,
+          "y2": 10,
+          "thickness": 0.5,
+          "label": "Lounge east wall"
+        },
+        {
+          "id": "lounge-south",
+          "x1": 13.026,
+          "y1": 10,
+          "x2": 17.645,
+          "y2": 10,
+          "thickness": 0.5,
+          "label": "Lounge south wall"
+        }
+      ],
       "buildingOutline": [
         [
           13.351,
