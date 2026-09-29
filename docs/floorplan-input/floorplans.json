@@ -816,23 +816,23 @@
       "showBuildingOutline": false,
       "buildingOutline": [
         [
-          0.5,
+          0.752,
           2.104
         ],
         [
-          6.304,
+          4.381,
           2.104
         ],
         [
+          4.381,
+          1.481
+        ],
+        [
           6.304,
-          0.32
+          1.481
         ],
         [
-          11.877,
-          0.32
-        ],
-        [
-          11.877,
+          6.304,
           0.529
         ],
         [
@@ -841,11 +841,19 @@
         ],
         [
           16.602,
-          10.701
+          10.654
         ],
         [
           0.5,
-          10.701
+          10.654
+        ],
+        [
+          0.5,
+          5.306
+        ],
+        [
+          0.752,
+          5.306
         ]
       ],
       "rooms": [
@@ -931,9 +939,9 @@
           "id": "en-suite",
           "label": "En suite",
           "x": 0.752,
-          "y": 0.529,
+          "y": 2.104,
           "width": 3.629,
-          "depth": 4.777,
+          "depth": 3.202,
           "height": 2.52,
           "measured": {
             "length": 3.114,
@@ -958,11 +966,11 @@
             ],
             [
               2.832,
-              4.777
+              3.202
             ],
             [
               0,
-              4.777
+              3.202
             ]
           ],
           "shapeNote": "North wall 3.629 m; west wall 3.202 m. Shower alcove on east side: 1.595 m long, 0.797 m deep, followed by a 1.430 m return. Final 0.901 m of north wall is recessed internally by 0.09 m.",
@@ -981,9 +989,9 @@
           "id": "back-landing",
           "label": "Back landing",
           "x": 3.584,
-          "y": 0.529,
+          "y": 1.481,
           "width": 2.72,
-          "depth": 4.777,
+          "depth": 3.825,
           "height": 2.844,
           "measured": {
             "length": 2.544,
@@ -1000,22 +1008,30 @@
             ],
             [
               2.72,
-              4.777
+              2.544
+            ],
+            [
+              1.251,
+              2.544
+            ],
+            [
+              1.251,
+              3.825
             ],
             [
               0,
-              4.777
+              3.825
             ],
             [
               0,
-              1.595
+              1.322
             ],
             [
               0.797,
-              1.595
+              1.322
             ]
           ],
-          "shapeNote": "Simplified complementary L-shape filling the back-stair area between the En suite, Office and Master bedroom. Four runs are verified; two returns remain inferred.",
+          "shapeNote": "Irregular landing over the Back-entry projection, between the En suite, Office and Master bedroom. Four runs are verified; two returns remain inferred.",
           "openings": [],
           "measurementStatus": "partially-owner-verified",
           "displayDimensions": false
@@ -1644,6 +1660,40 @@
           "y2": 5.327,
           "thickness": 0.5,
           "label": "Black & white north wall"
+        }
+      ],
+      "draftingWalls": [
+        {
+          "id": "back-step-vertical",
+          "x1": 4.381,
+          "y1": 1.481,
+          "x2": 4.381,
+          "y2": 2.104,
+          "label": "En suite / Back landing exterior step"
+        },
+        {
+          "id": "service-step-vertical",
+          "x1": 6.304,
+          "y1": 0.529,
+          "x2": 6.304,
+          "y2": 1.481,
+          "label": "Back landing / Office exterior step"
+        },
+        {
+          "id": "office-top-connector",
+          "x1": 6.304,
+          "y1": 0.529,
+          "x2": 6.783,
+          "y2": 0.529,
+          "label": "Office exterior connector"
+        },
+        {
+          "id": "bath-pink-connector",
+          "x1": 11.877,
+          "y1": 0.529,
+          "x2": 12.983,
+          "y2": 0.529,
+          "label": "Bathroom / Pink exterior connector"
         }
       ]
     }

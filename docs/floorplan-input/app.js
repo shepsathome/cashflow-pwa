@@ -1,7 +1,7 @@
 const STORAGE_KEY = "project-seattle.wall-survey.v2";
 const LEGACY_STORAGE_KEY = "project-seattle.floorplan-input.v1";
 const EXPORT_FILE_NAME = "project-seattle-wall-survey.json";
-const PLAN_VERSION = "public-floorplans-v28";
+const PLAN_VERSION = "public-floorplans-v29";
 const DIRECTIONS = ["North", "East", "South", "West", "North-east", "South-east", "South-west", "North-west"];
 const BOUNDARY_TYPES = ["Unknown", "Exterior", "Internal", "Party/shared"];
 const OPENING_TYPES = ["Internal Door", "External Door", "Double Door", "Window", "Continuous Glazing", "Archway"];
