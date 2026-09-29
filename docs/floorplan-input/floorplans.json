@@ -14,6 +14,14 @@
       "capturedAt": "2026-09-28",
       "scope": "Ground floor",
       "status": "verified-with-noted-exceptions"
+    },
+    "latestFirstFloorSurvey": {
+      "type": "owner-verified-internal-wall-survey",
+      "capturedAt": "2026-09-29",
+      "scope": "First floor",
+      "verifiedWalls": 38,
+      "totalWalls": 47,
+      "status": "verified-with-partial-bathroom-and-back-landing"
     }
   },
   "status": "owner-measured-schematic",
@@ -804,76 +812,68 @@
     {
       "id": "first",
       "label": "First floor",
-      "layoutNote": "Current rooms use owner measurements; the overall upper-floor mass is cross-checked against an older plan.",
+      "layoutNote": "First-floor geometry rebuilt from the owner's internal-wall survey dated 29 September 2026. The Bathroom outline and two Back landing return segments remain partially inferred.",
       "buildingOutline": [
         [
-          7.34,
-          -0.096
+          0.5,
+          2.104
         ],
         [
-          11.507,
-          -0.096
+          6.304,
+          2.104
         ],
         [
-          11.507,
-          -0.155
+          6.304,
+          0.32
         ],
         [
-          16.8,
-          -0.155
+          11.877,
+          0.32
         ],
         [
-          16.8,
-          10
+          11.877,
+          0.529
         ],
         [
-          0,
-          10
+          16.602,
+          0.529
         ],
         [
-          0,
-          4.93
+          16.602,
+          10.701
         ],
         [
-          1.85,
-          4.93
-        ],
-        [
-          1.85,
-          2.292
-        ],
-        [
-          7.34,
-          2.292
+          0.5,
+          10.701
         ]
       ],
       "rooms": [
         {
           "id": "master-bedroom",
           "label": "Master bedroom",
-          "x": 0.81,
-          "y": 5.29,
-          "width": 4.775,
-          "depth": 5.41,
+          "x": 0.5,
+          "y": 5.306,
+          "width": 4.833,
+          "depth": 5.374,
           "height": 2.721,
           "measured": {
-            "length": 5.41,
-            "width": 4.775
+            "length": 5.306,
+            "width": 4.833
           },
-          "shapeNote": "Ceiling slopes toward the west to approximately 2.247 m. West-wall fireplace approximately 1.157 m wide and 0.527 m deep.",
+          "shapeNote": "East wall 5.374 m, west wall 5.237 m, south wall 4.932 m and north wall 4.734 m. North-west 0.727 m section projects 0.252 m into the room. Insulated west/east walls approximately 0.60 m thick.",
           "openings": [
             {
               "type": "internal-door",
               "wall": "east",
-              "offset": 4.393,
+              "offset": 4.574,
               "width": 0.817,
               "connectsTo": "Foyer"
             },
             {
               "type": "window",
               "wall": "west",
-              "offset": 0.229,
-              "width": 1.419,
+              "offset": 0.18,
+              "width": 1.397,
               "connectsTo": "Outside"
             },
             {
@@ -897,19 +897,46 @@
               "width": 0.713,
               "connectsTo": "Back landing"
             }
-          ]
+          ],
+          "polygon": [
+            [
+              0.252,
+              0
+            ],
+            [
+              4.833,
+              0
+            ],
+            [
+              4.833,
+              5.374
+            ],
+            [
+              0,
+              5.237
+            ],
+            [
+              0,
+              0.727
+            ],
+            [
+              0.252,
+              0.727
+            ]
+          ],
+          "measurementStatus": "owner-verified-irregular"
         },
         {
           "id": "en-suite",
           "label": "En suite",
-          "x": 1.85,
-          "y": 1.975,
-          "width": 2.284,
-          "depth": 3.315,
+          "x": 0.5,
+          "y": 2.104,
+          "width": 3.629,
+          "depth": 3.202,
           "height": 2.52,
           "measured": {
-            "length": 3.315,
-            "width": 2.284
+            "length": 3.114,
+            "width": 3.629
           },
           "polygon": [
             [
@@ -917,91 +944,101 @@
               0
             ],
             [
-              3.09,
+              3.629,
               0
             ],
             [
-              3.09,
-              1.2
+              3.629,
+              1.595
             ],
             [
-              2.284,
-              1.2
+              2.832,
+              1.595
             ],
             [
-              2.284,
-              3.315
+              2.832,
+              3.025
             ],
             [
               0,
-              3.315
+              3.202
             ]
           ],
-          "shapeNote": "Walk-in shower extends approximately 0.806 m at the north-east corner.",
+          "shapeNote": "North wall 3.629 m; west wall 3.202 m. Shower alcove on east side: 1.595 m long, 0.797 m deep, followed by a 1.430 m return. Final 0.901 m of north wall is recessed internally by 0.09 m.",
           "openings": [
             {
               "type": "window",
               "wall": "west",
-              "offset": 0.88,
-              "width": 1.42,
+              "offset": 0.908,
+              "width": 1.397,
               "connectsTo": "Outside"
             }
-          ]
+          ],
+          "measurementStatus": "owner-verified-irregular"
         },
         {
           "id": "back-landing",
           "label": "Back landing",
-          "x": 4.134,
-          "y": 1.975,
-          "width": 1.419,
-          "depth": 3.315,
+          "x": 4.129,
+          "y": 1.481,
+          "width": 2.175,
+          "depth": 3.825,
           "height": 2.844,
           "measured": {
-            "length": 1.32,
-            "width": 1.078
+            "length": 2.544,
+            "width": 2.306
           },
           "polygon": [
             [
-              0.806,
+              0.937,
               0
             ],
             [
-              1.419,
+              2.175,
               0
             ],
             [
-              1.419,
-              3.315
+              2.175,
+              2.544
+            ],
+            [
+              1.251,
+              2.544
+            ],
+            [
+              1.251,
+              3.825
             ],
             [
               0,
-              3.315
+              3.825
             ],
             [
               0,
-              1.2
+              1.322
             ],
             [
-              0.806,
-              1.2
+              0.937,
+              1.322
             ]
           ],
-          "shapeNote": "Irregular landing filling the space between the En suite, Office and Master bedroom, with stairs to the ground floor.",
-          "openings": []
+          "shapeNote": "Landing fills the irregular space between En suite, Office and Master bedroom. Verified runs include east 2.544 m, south 2.306 m, west 1.322 m and north 1.371 m; two internal returns remain inferred. A 0.255 m entrance landing projects 1.251 m east from the Master doorway.",
+          "openings": [],
+          "measurementStatus": "partially-owner-verified"
         },
         {
           "id": "foyer",
           "label": "Foyer",
-          "x": 5.585,
-          "y": 5.358,
-          "width": 4.697,
-          "depth": 5.348,
+          "x": 5.333,
+          "y": 5.344,
+          "width": 4.626,
+          "depth": 5.357,
           "height": 2.671,
           "measured": {
-            "length": 5.348,
-            "width": 4.697
+            "length": 5.357,
+            "width": 4.626
           },
-          "shapeNote": "Fireplace on west wall, approximately 1.45 m wide; local width reduces to approximately 4.04 m.",
+          "shapeNote": "East/west walls average 5.357 m; north/south walls average 4.626 m. Fireplace on west wall.",
           "openings": [
             {
               "type": "window",
@@ -1013,63 +1050,97 @@
             {
               "type": "internal-door",
               "wall": "east",
-              "offset": 2.363,
+              "offset": 2.382,
               "width": 0.804,
-              "connectsTo": "Landing"
+              "connectsTo": "Stair landing"
             },
             {
               "type": "internal-door",
               "wall": "north",
-              "offset": 2.371,
-              "width": 0.728,
+              "offset": 1.263,
+              "width": 0.722,
               "connectsTo": "Hallway"
+            },
+            {
+              "type": "internal-door",
+              "wall": "west",
+              "offset": 0.254,
+              "width": 0.8,
+              "connectsTo": "Master bedroom",
+              "renderFrom": "Master bedroom"
             }
-          ]
+          ],
+          "measurementStatus": "owner-verified"
         },
         {
           "id": "stair-landing",
           "label": "Stair landing",
-          "x": 10.282,
-          "y": 5.358,
-          "width": 1.5,
-          "depth": 5.348,
+          "x": 9.959,
+          "y": 5.344,
+          "width": 2.013,
+          "depth": 5.324,
           "height": 2.671,
           "measured": {
-            "length": 5.348,
-            "width": 1.5
+            "length": 5.324,
+            "width": 2.013
           },
-          "shapeNote": "Estimated from the ground-floor footprint. Stairs descend on the left and rise to the attic on the right from the north side; the southern section is landing space.",
+          "shapeNote": "Stairs to attic begin 2.048 m from the north edge on the east side. Stairs descend along the final 2.048 m of the west side and wind right. Southern section is landing space.",
           "features": [
             {
               "type": "stairs-down",
               "label": "Down",
               "x": 0.08,
               "y": 0.12,
-              "width": 0.62,
-              "depth": 2.15
+              "width": 0.82,
+              "depth": 2.048
             },
             {
               "type": "stairs-up",
               "label": "Up",
-              "x": 0.8,
+              "x": 1.1,
               "y": 0.12,
-              "width": 0.62,
-              "depth": 2.15
+              "width": 0.82,
+              "depth": 2.048
             }
           ],
-          "openings": []
+          "openings": [
+            {
+              "type": "window",
+              "wall": "south",
+              "offset": 0.496,
+              "width": 1.042,
+              "connectsTo": "Outside"
+            },
+            {
+              "type": "internal-door",
+              "wall": "west",
+              "offset": 2.382,
+              "width": 0.804,
+              "connectsTo": "Foyer",
+              "renderFrom": "Foyer"
+            },
+            {
+              "type": "internal-door",
+              "wall": "east",
+              "offset": 2.352,
+              "width": 0.769,
+              "connectsTo": "Black & white bedroom",
+              "renderFrom": "Black & white bedroom"
+            }
+          ],
+          "measurementStatus": "owner-verified"
         },
         {
           "id": "hallway",
           "label": "Hallway",
-          "x": 6.26,
-          "y": 4.062,
-          "width": 6.561,
-          "depth": 1.296,
+          "x": 6.304,
+          "y": 4.025,
+          "width": 6.679,
+          "depth": 2.116,
           "height": 2.472,
           "measured": {
-            "length": 1.296,
-            "width": 6.546
+            "length": 1.709,
+            "width": 6.607
           },
           "polygon": [
             [
@@ -1077,84 +1148,98 @@
               0
             ],
             [
-              6.561,
+              6.534,
               0
             ],
             [
-              6.561,
-              1.296
+              6.534,
+              0.883
             ],
             [
-              0.135,
-              1.296
+              6.679,
+              0.883
+            ],
+            [
+              6.679,
+              2.116
+            ],
+            [
+              5.651,
+              2.116
+            ],
+            [
+              5.651,
+              1.302
             ],
             [
               0,
-              1.16
+              1.302
             ]
           ],
-          "shapeNote": "Slightly non-rectangular at the west end; south wall measured approximately 6.681 m.",
-          "openings": []
+          "shapeNote": "South wall 6.679 m, north wall 6.534 m, west wall 1.302 m and east side 2.116 m including a 0.883 m north alcove.",
+          "openings": [],
+          "measurementStatus": "owner-verified-irregular"
         },
         {
           "id": "office",
           "label": "Office",
-          "x": 5.553,
-          "y": 0.351,
-          "width": 2.928,
-          "depth": 3.711,
+          "x": 6.304,
+          "y": 0.32,
+          "width": 3.022,
+          "depth": 3.705,
           "height": 2.502,
           "measured": {
-            "length": 3.711,
-            "width": 2.928
+            "length": 3.705,
+            "width": 2.783
           },
           "polygon": [
             [
-              0.281,
+              0.479,
               0
             ],
             [
-              2.928,
+              3.022,
               0
             ],
             [
-              2.928,
-              3.711
+              3.022,
+              3.685
             ],
             [
               0,
-              3.711
+              3.725
             ]
           ],
-          "shapeNote": "Irregular room; north wall approximately 2.647 m versus 2.928 m at the south.",
+          "shapeNote": "Tapered room: north wall 2.543 m, south wall 3.022 m, east wall 3.685 m and west wall 3.725 m.",
           "openings": [
             {
               "type": "window",
               "wall": "north",
-              "offset": 0.408,
-              "width": 1.411,
+              "offset": 0.434,
+              "width": 1.386,
               "connectsTo": "Outside"
             },
             {
               "type": "internal-door",
               "wall": "south",
-              "offset": 1.003,
+              "offset": 1.118,
               "width": 0.689,
               "connectsTo": "Hallway"
             }
-          ]
+          ],
+          "measurementStatus": "owner-verified-irregular"
         },
         {
           "id": "bathroom",
           "label": "Bathroom",
-          "x": 8.481,
-          "y": 0.442,
-          "width": 2.54,
-          "depth": 3.62,
+          "x": 9.326,
+          "y": 0.32,
+          "width": 2.551,
+          "depth": 3.63,
           "height": 2.53,
           "measured": {
-            "length": 3.62,
-            "width": 2.54
+            "length": 3.627,
+            "width": 2.244
           },
           "polygon": [
             [
@@ -1162,43 +1247,43 @@
               0
             ],
             [
-              2.54,
+              2.551,
               0
             ],
             [
-              2.54,
-              1.2
+              2.551,
+              1.073
             ],
             [
-              1.945,
-              1.2
+              1.947,
+              1.073
             ],
             [
-              1.945,
-              3.62
+              1.947,
+              3.63
             ],
             [
               0,
-              3.62
+              3.63
             ]
           ],
-          "shapeNote": "Irregular shape with a narrower southern section and shower in the south-east corner; final outline needs one confirming measurement.",
+          "shapeNote": "Partially verified. East/west depth approximately 3.624–3.630 m. South wall 1.947 m. Toilet alcove on east side is 1.073 m long and 0.604 m deep.",
           "features": [
             {
               "type": "shower",
               "label": "Shower",
-              "x": 0.849,
-              "y": 2.79,
-              "width": 1.096,
-              "depth": 0.83
+              "x": 0.858,
+              "y": 2.793,
+              "width": 1.089,
+              "depth": 0.837
             },
             {
               "type": "toilet-recess",
               "label": "WC recess",
-              "x": 1.945,
+              "x": 1.947,
               "y": 0,
-              "width": 0.595,
-              "depth": 1.2
+              "width": 0.604,
+              "depth": 1.073
             }
           ],
           "openings": [
@@ -1213,40 +1298,41 @@
               "type": "internal-door",
               "wall": "south",
               "offset": 0.01,
-              "width": 0.695,
+              "width": 0.696,
               "connectsTo": "Hallway"
             }
-          ]
+          ],
+          "measurementStatus": "partially-owner-verified"
         },
         {
           "id": "pink-bedroom",
           "label": "Pink bedroom",
-          "x": 12.821,
-          "y": 0.393,
-          "width": 3.622,
-          "depth": 4.965,
+          "x": 12.983,
+          "y": 0.529,
+          "width": 3.619,
+          "depth": 4.798,
           "height": 2.477,
           "measured": {
-            "length": 4.965,
-            "width": 3.622
+            "length": 4.799,
+            "width": 3.619
           },
-          "shapeNote": "West-wall closet extends approximately 0.858 m beyond the room; immersion-heater compartment extends farther north.",
+          "shapeNote": "East wall 4.956 m, west wall 4.641 m, south wall 3.622 m and north wall 3.616 m. Walk-in cabinet begins 1.153 m from north wall and is 1.600 m wide by 0.783 m deep; immersion-heater space continues north.",
           "features": [
             {
               "type": "walk-in-closet",
               "label": "Walk-in cabinet",
-              "x": -0.858,
-              "y": 1.286,
-              "width": 0.858,
-              "depth": 1.61
+              "x": -0.783,
+              "y": 1.153,
+              "width": 0.783,
+              "depth": 1.6
             },
             {
               "type": "immersion-cupboard",
               "label": "Immersion",
-              "x": -0.858,
-              "y": -0.209,
-              "width": 0.858,
-              "depth": 1.495
+              "x": -0.783,
+              "y": 0,
+              "width": 0.783,
+              "depth": 1.153
             }
           ],
           "openings": [
@@ -1261,61 +1347,317 @@
               "type": "window",
               "wall": "east",
               "offset": 1.689,
-              "width": 1.443,
+              "width": 1.4,
               "connectsTo": "Outside"
             },
             {
               "type": "internal-door",
               "wall": "west",
-              "offset": 3.933,
-              "width": 0.692,
+              "offset": 0.383,
+              "width": 0.689,
               "connectsTo": "Hallway"
             }
-          ]
+          ],
+          "measurementStatus": "owner-verified"
         },
         {
           "id": "black-white-bedroom",
           "label": "Black & white bedroom",
-          "x": 11.782,
-          "y": 5.358,
-          "width": 4.661,
-          "depth": 5.325,
+          "x": 11.972,
+          "y": 5.327,
+          "width": 4.63,
+          "depth": 5.326,
           "height": 2.7,
           "measured": {
-            "length": 5.325,
-            "width": 4.661
+            "length": 5.326,
+            "width": 4.63
           },
-          "shapeNote": "Fireplace on north wall, approximately 1.234 m wide; local length reduces to approximately 4.734 m.",
+          "shapeNote": "East/west walls average 5.326 m; north/south walls average 4.630 m. Windows recessed approximately 0.281 m.",
           "openings": [
             {
               "type": "internal-door",
               "wall": "north",
-              "offset": 0.271,
-              "width": 0.787,
+              "offset": 0,
+              "width": 0.802,
               "connectsTo": "Hallway"
             },
             {
               "type": "internal-door",
               "wall": "west",
-              "offset": 0.237,
+              "offset": 2.352,
               "width": 0.769,
-              "connectsTo": "Landing"
+              "connectsTo": "Stair landing"
             },
             {
               "type": "window",
               "wall": "south",
-              "offset": 1.839,
+              "offset": 1.701,
               "width": 1.101,
               "connectsTo": "Outside"
             },
             {
               "type": "window",
               "wall": "east",
-              "offset": 2.099,
-              "width": 1.103,
+              "offset": 2.113,
+              "width": 1.047,
               "connectsTo": "Outside"
             }
-          ]
+          ],
+          "measurementStatus": "owner-verified"
+        }
+      ],
+      "measuredWalls": [
+        {
+          "id": "master-east",
+          "x1": 5.333,
+          "y1": 5.306,
+          "x2": 5.333,
+          "y2": 10.68,
+          "thickness": 0.6,
+          "label": "Master / Foyer wall"
+        },
+        {
+          "id": "master-west",
+          "x1": 0.5,
+          "y1": 5.463,
+          "x2": 0.5,
+          "y2": 10.7,
+          "thickness": 0.6,
+          "label": "Master west wall"
+        },
+        {
+          "id": "master-north",
+          "x1": 0.5,
+          "y1": 5.306,
+          "x2": 5.234,
+          "y2": 5.306,
+          "thickness": 0.24,
+          "label": "Master north wall"
+        },
+        {
+          "id": "ensuite-south",
+          "x1": 0.5,
+          "y1": 5.306,
+          "x2": 2.489,
+          "y2": 5.306,
+          "thickness": 0.246,
+          "label": "En suite / Master wall"
+        },
+        {
+          "id": "ensuite-west",
+          "x1": 0.5,
+          "y1": 2.104,
+          "x2": 0.5,
+          "y2": 5.306,
+          "thickness": 0.612,
+          "label": "En suite west wall"
+        },
+        {
+          "id": "landing-south",
+          "x1": 4.129,
+          "y1": 5.306,
+          "x2": 6.304,
+          "y2": 5.306,
+          "thickness": 0.256,
+          "label": "Back landing south wall"
+        },
+        {
+          "id": "landing-north",
+          "x1": 4.129,
+          "y1": 1.481,
+          "x2": 5.5,
+          "y2": 1.481,
+          "thickness": 0.5,
+          "label": "Back landing north wall"
+        },
+        {
+          "id": "foyer-east",
+          "x1": 9.959,
+          "y1": 5.344,
+          "x2": 9.959,
+          "y2": 10.68,
+          "thickness": 0.7,
+          "label": "Foyer / Stair landing wall"
+        },
+        {
+          "id": "foyer-south",
+          "x1": 5.333,
+          "y1": 10.7,
+          "x2": 9.959,
+          "y2": 10.7,
+          "thickness": 0.5,
+          "label": "Foyer south wall"
+        },
+        {
+          "id": "foyer-north",
+          "x1": 5.333,
+          "y1": 5.344,
+          "x2": 9.959,
+          "y2": 5.344,
+          "thickness": 0.5,
+          "label": "Foyer north wall"
+        },
+        {
+          "id": "stair-east",
+          "x1": 11.972,
+          "y1": 5.344,
+          "x2": 11.972,
+          "y2": 10.665,
+          "thickness": 0.7,
+          "label": "Stair landing / Black & white bedroom wall"
+        },
+        {
+          "id": "stair-south",
+          "x1": 9.959,
+          "y1": 10.665,
+          "x2": 11.972,
+          "y2": 10.665,
+          "thickness": 0.5,
+          "label": "Stair landing south wall"
+        },
+        {
+          "id": "stair-west",
+          "x1": 9.959,
+          "y1": 5.344,
+          "x2": 9.959,
+          "y2": 10.671,
+          "thickness": 0.7,
+          "label": "Stair landing / Foyer wall"
+        },
+        {
+          "id": "stair-north",
+          "x1": 9.959,
+          "y1": 5.344,
+          "x2": 11.972,
+          "y2": 5.344,
+          "thickness": 0.5,
+          "label": "Stair landing north wall"
+        },
+        {
+          "id": "hall-east",
+          "x1": 12.983,
+          "y1": 4.025,
+          "x2": 12.983,
+          "y2": 6.141,
+          "thickness": 0.7,
+          "label": "Hall / Pink bedroom wall"
+        },
+        {
+          "id": "hall-south",
+          "x1": 6.304,
+          "y1": 5.327,
+          "x2": 12.983,
+          "y2": 5.327,
+          "thickness": 0.5,
+          "label": "Hall south wall"
+        },
+        {
+          "id": "hall-north",
+          "x1": 6.304,
+          "y1": 4.025,
+          "x2": 12.838,
+          "y2": 4.025,
+          "thickness": 0.8,
+          "label": "Hall north wall"
+        },
+        {
+          "id": "office-south",
+          "x1": 6.304,
+          "y1": 4.025,
+          "x2": 9.326,
+          "y2": 4.025,
+          "thickness": 0.8,
+          "label": "Office / Hall wall"
+        },
+        {
+          "id": "office-north",
+          "x1": 6.783,
+          "y1": 0.32,
+          "x2": 9.326,
+          "y2": 0.32,
+          "thickness": 0.5,
+          "label": "Office north wall"
+        },
+        {
+          "id": "bathroom-south",
+          "x1": 9.326,
+          "y1": 3.95,
+          "x2": 11.273,
+          "y2": 3.95,
+          "thickness": 0.8,
+          "label": "Bathroom / Hall wall"
+        },
+        {
+          "id": "pink-east",
+          "x1": 16.602,
+          "y1": 0.529,
+          "x2": 16.602,
+          "y2": 5.485,
+          "thickness": 0.5,
+          "label": "Pink bedroom east wall"
+        },
+        {
+          "id": "pink-south",
+          "x1": 12.983,
+          "y1": 5.327,
+          "x2": 16.602,
+          "y2": 5.327,
+          "thickness": 0.5,
+          "label": "Pink / Black & white wall"
+        },
+        {
+          "id": "pink-west",
+          "x1": 12.983,
+          "y1": 0.686,
+          "x2": 12.983,
+          "y2": 5.327,
+          "thickness": 0.07,
+          "label": "Pink bedroom west partition"
+        },
+        {
+          "id": "pink-north",
+          "x1": 12.983,
+          "y1": 0.529,
+          "x2": 16.602,
+          "y2": 0.529,
+          "thickness": 0.5,
+          "label": "Pink bedroom north wall"
+        },
+        {
+          "id": "black-east",
+          "x1": 16.602,
+          "y1": 5.327,
+          "x2": 16.602,
+          "y2": 10.654,
+          "thickness": 0.5,
+          "label": "Black & white east wall"
+        },
+        {
+          "id": "black-south",
+          "x1": 11.972,
+          "y1": 10.654,
+          "x2": 16.602,
+          "y2": 10.654,
+          "thickness": 0.5,
+          "label": "Black & white south wall"
+        },
+        {
+          "id": "black-west",
+          "x1": 11.972,
+          "y1": 5.327,
+          "x2": 11.972,
+          "y2": 10.651,
+          "thickness": 0.07,
+          "label": "Black & white west partition"
+        },
+        {
+          "id": "black-north",
+          "x1": 11.972,
+          "y1": 5.327,
+          "x2": 16.602,
+          "y2": 5.327,
+          "thickness": 0.5,
+          "label": "Black & white north wall"
         }
       ]
     }
