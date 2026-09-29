@@ -855,7 +855,7 @@
           "x": 0.5,
           "y": 5.306,
           "width": 4.833,
-          "depth": 5.374,
+          "depth": 5.348,
           "height": 2.721,
           "measured": {
             "length": 5.306,
@@ -910,11 +910,11 @@
             ],
             [
               4.833,
-              5.374
+              5.348
             ],
             [
               0,
-              5.237
+              5.348
             ],
             [
               0,
@@ -931,9 +931,9 @@
           "id": "en-suite",
           "label": "En suite",
           "x": 0.752,
-          "y": 2.104,
+          "y": 0.529,
           "width": 3.629,
-          "depth": 3.202,
+          "depth": 4.777,
           "height": 2.52,
           "measured": {
             "length": 3.114,
@@ -958,11 +958,11 @@
             ],
             [
               2.832,
-              3.202
+              4.777
             ],
             [
               0,
-              3.202
+              4.777
             ]
           ],
           "shapeNote": "North wall 3.629 m; west wall 3.202 m. Shower alcove on east side: 1.595 m long, 0.797 m deep, followed by a 1.430 m return. Final 0.901 m of north wall is recessed internally by 0.09 m.",
@@ -981,9 +981,9 @@
           "id": "back-landing",
           "label": "Back landing",
           "x": 3.584,
-          "y": 1.481,
+          "y": 0.529,
           "width": 2.72,
-          "depth": 3.825,
+          "depth": 4.777,
           "height": 2.844,
           "measured": {
             "length": 2.544,
@@ -1000,32 +1000,25 @@
             ],
             [
               2.72,
-              2.544
-            ],
-            [
-              1.251,
-              2.544
-            ],
-            [
-              1.251,
-              3.825
+              4.777
             ],
             [
               0,
-              3.825
+              4.777
             ],
             [
               0,
-              1.322
+              1.595
             ],
             [
               0.797,
-              1.322
+              1.595
             ]
           ],
-          "shapeNote": "Landing fills the irregular space between En suite, Office and Master bedroom. Verified runs include east 2.544 m, south 2.306 m, west 1.322 m and north 1.371 m; two internal returns remain inferred. A 0.255 m entrance landing projects 1.251 m east from the Master doorway.",
+          "shapeNote": "Simplified complementary L-shape filling the back-stair area between the En suite, Office and Master bedroom. Four runs are verified; two returns remain inferred.",
           "openings": [],
-          "measurementStatus": "partially-owner-verified"
+          "measurementStatus": "partially-owner-verified",
+          "displayDimensions": false
         },
         {
           "id": "foyer",
@@ -1033,7 +1026,7 @@
           "x": 5.333,
           "y": 5.344,
           "width": 4.626,
-          "depth": 5.357,
+          "depth": 5.31,
           "height": 2.671,
           "measured": {
             "length": 5.357,
@@ -1079,7 +1072,7 @@
           "x": 9.959,
           "y": 5.344,
           "width": 2.013,
-          "depth": 5.324,
+          "depth": 5.31,
           "height": 2.671,
           "measured": {
             "length": 5.324,
@@ -1177,9 +1170,9 @@
           "id": "office",
           "label": "Office",
           "x": 6.304,
-          "y": 0.32,
+          "y": 0.529,
           "width": 3.022,
-          "depth": 3.705,
+          "depth": 3.496,
           "height": 2.502,
           "measured": {
             "length": 3.705,
@@ -1196,11 +1189,11 @@
             ],
             [
               3.022,
-              3.685
+              3.496
             ],
             [
               0,
-              3.725
+              3.496
             ]
           ],
           "shapeNote": "Tapered room: north wall 2.543 m, south wall 3.022 m, east wall 3.685 m and west wall 3.725 m.",
@@ -1226,9 +1219,9 @@
           "id": "bathroom",
           "label": "Bathroom",
           "x": 9.326,
-          "y": 0.32,
+          "y": 0.529,
           "width": 2.551,
-          "depth": 3.63,
+          "depth": 3.421,
           "height": 2.53,
           "measured": {
             "length": 3.627,
@@ -1253,11 +1246,11 @@
             ],
             [
               1.947,
-              3.63
+              3.421
             ],
             [
               0,
-              3.63
+              3.421
             ]
           ],
           "shapeNote": "Partially verified. East/west depth approximately 3.624–3.630 m. South wall 1.947 m. Toilet alcove on east side is 1.073 m long and 0.604 m deep.",
@@ -1266,7 +1259,7 @@
               "type": "shower",
               "label": "Shower",
               "x": 0.858,
-              "y": 2.793,
+              "y": 2.584,
               "width": 1.089,
               "depth": 0.837
             },
@@ -1359,7 +1352,7 @@
           "x": 11.972,
           "y": 5.327,
           "width": 4.63,
-          "depth": 5.326,
+          "depth": 5.327,
           "height": 2.7,
           "measured": {
             "length": 5.326,
